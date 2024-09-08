@@ -1,0 +1,2 @@
+# telbotnsn
+Zabbix API poller
