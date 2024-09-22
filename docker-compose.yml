@@ -1,0 +1,15 @@
+services:
+  redis:
+    image: redis
+    container_name: bot_redis
+    restart: always
+    volumes:
+      - /data/
+    ports:
+      - "6380:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 5
