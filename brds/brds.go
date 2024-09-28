@@ -2,6 +2,7 @@ package brds
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/redis/go-redis/v9"
@@ -9,41 +10,48 @@ import (
 
 // addUsers adds users to whom messages will be sent.
 func AddUsers(client *redis.Client, ctx context.Context, users []string) error {
-	if len(users) > 0 {
-		for _, user := range users {
-			if err := client.HSet(ctx, "user:"+user, "id", "0").Err(); err != nil {
-				return err
-			}
-			// log.Println("user:"+user+"=", client.HGetAll(ctx, "user:"+user).Val())
-		}
+	if len(users) < 1 {
+		return errors.New("the list of users is empty")
 	}
+
+	for _, user := range users {
+		if err := client.HSet(ctx, "user:"+user, "id", "0").Err(); err != nil {
+			return err
+		}
+		// log.Println("user:"+user+"=", client.HGetAll(ctx, "user:"+user).Val())
+	}
+
 	return nil
 }
 
 // DelUsers removes users from the mailing list.
 func DelUsers(client *redis.Client, ctx context.Context, users []string) error {
-	if len(users) > 0 {
-		for _, user := range users {
+	if len(users) < 1 {
+		return errors.New("the list of users is empty")
+	}
+	for _, user := range users {
 
-			if res, err := client.Del(ctx, "user:"+user).Result(); err != nil {
-				return err
-			} else {
-				log.Println("res=", res)
-			}
+		if res, err := client.Del(ctx, "user:"+user).Result(); err != nil {
+			return err
+		} else {
+			log.Println("res=", res)
 		}
 	}
+
 	return nil
 }
 
 // SaveUsers  saves the list of users to the database.
 func SaveUsers(client *redis.Client, ctx context.Context, users map[string]map[string]string) error {
-	if len(users) > 0 {
-		for key, val := range users {
-			if err := client.HSet(ctx, key, val).Err(); err != nil {
-				return err
-			}
+	if len(users) < 1 {
+		return errors.New("the list of users is empty")
+	}
+	for key, val := range users {
+		if err := client.HSet(ctx, key, val).Err(); err != nil {
+			return err
 		}
 	}
+
 	return nil
 }
 

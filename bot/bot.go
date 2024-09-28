@@ -7,9 +7,12 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sync"
 )
 
 const botUrlAPI string = "https://api.telegram.org/"
+
+var waitGroup sync.WaitGroup
 
 // An User represents a Telegram user or bot.
 type User struct {
@@ -63,7 +66,6 @@ type botUrls struct {
 
 // A Bot is a client of a telegram bot.
 type Bot struct {
-	client   *http.Client
 	botToken string
 	urls     botUrls
 	// lastUpdate ResultIncomingUpdate
@@ -92,20 +94,19 @@ func (b *Bot) SetURLs(urlAPI string) {
 
 // CheckAuth checks your bot's authentication token.
 func (b *Bot) CheckAuth() error {
-	resp, err := b.client.Get(b.urls.getMeUrl)
+	resp, err := http.Get(b.urls.getMeUrl)
 	if err != nil {
 		return err
 	}
 
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return errors.New("authorization bot error")
 	}
-
-	defer resp.Body.Close()
 	return nil
 }
 
-// SendMessage sends text messages.
+// SendMessage sends text message.
 func (b *Bot) SendMessage(msg *MessageToBot) error {
 
 	bJSON, err := json.Marshal(msg)
@@ -113,19 +114,78 @@ func (b *Bot) SendMessage(msg *MessageToBot) error {
 		return err
 	}
 
-	resp, err := b.client.Post(b.urls.sendMessageURL, "application/json", bytes.NewReader(bJSON))
+	resp, err := http.Post(b.urls.sendMessageURL, "application/json", bytes.NewReader(bJSON))
 	if err != nil {
 		return err
 	}
 
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return errors.New(resp.Status)
 	}
-
-	defer resp.Body.Close()
 	return nil
 }
 
+// sengdMessages sends messages from the channel to users.
+func sendMessages(bot Bot, mQ <-chan MessageToBot) {
+	defer waitGroup.Done()
+	for msg := range mQ {
+		go func(b Bot, m MessageToBot) {
+
+			if err := bot.SendMessage(&m); err != nil {
+				log.Println(err)
+
+			}
+		}(bot, msg)
+	}
+}
+
+// botRun launches the bot.
+func Run(botToken string, mQ <-chan MessageToBot) {
+	bot := &Bot{botToken: botToken}
+	bot.SetURLs(botUrlAPI)
+
+	if err := bot.CheckAuth(); err != nil {
+		log.Fatal(err)
+	} else {
+		log.Println("your bot has been authenticated.")
+	}
+
+	waitGroup.Add(1)
+	go sendMessages(*bot, mQ)
+	waitGroup.Wait()
+
+}
+
+// var urls botUrls
+// urls.setURls(botToken, botUrlAPI)
+
+// client := &http.Client{}
+
+// if err := botCheckAuth(client, &urls); err != nil {
+// 	log.Fatal(err)
+// }
+
+// // var lastUpdate ResultIncomingUpdate
+// upd := botGetUpdates(client, &urls, &ParamGetUpdates{Offset: -1, Allowed_updates: []string{"message"}})
+// var lastUpdate ResultIncomingUpdate
+// if len(upd.Result) != 0 {
+// 	lastUpdate = upd.Result[len(upd.Result)-1]
+// }
+// for {
+// 	lastUpdate = Poller(client, &urls, &ParamGetUpdates{Offset: -1, Allowed_updates: []string{"message"}}, users, &lastUpdate)
+// 	log.Println(users)
+
+// 	// for _, val := range users {
+// 	// 	msg := MessageToBot{
+// 	// 		ChatId: val,
+// 	// 		Text:   "Hello!",
+// 	// 	}
+// 	// 	if err := botSendMessage(client, &urls, &msg); err != nil {
+// 	// 		log.Println(err)
+// 	// 	}
+// 	// }
+// }
 // func botGetUpdates(client *http.Client, urls *botUrls, param *ParamGetUpdates) *IncomingUpdate {
 // 	b, err := json.Marshal(param)
 // 	if err != nil {
@@ -190,54 +250,3 @@ func (b *Bot) SendMessage(msg *MessageToBot) error {
 // 	}
 // 	return ResultIncomingUpdate{}
 // }
-
-// botRun launches the bot.
-func Run(botToken string, users map[string]int) {
-	bot := Bot{
-		client:   &http.Client{},
-		botToken: botToken,
-	}
-	bot.SetURLs(botUrlAPI)
-
-	if err := bot.CheckAuth(); err != nil {
-		log.Fatal(err)
-	} else {
-		log.Println("your bot has been authenticated.")
-	}
-
-	msg := MessageToBot{80901973, "Hello!"}
-	if err := bot.SendMessage(&msg); err != nil {
-		log.Println(err)
-	}
-
-	// var urls botUrls
-	// urls.setURls(botToken, botUrlAPI)
-
-	// client := &http.Client{}
-
-	// if err := botCheckAuth(client, &urls); err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// // var lastUpdate ResultIncomingUpdate
-	// upd := botGetUpdates(client, &urls, &ParamGetUpdates{Offset: -1, Allowed_updates: []string{"message"}})
-	// var lastUpdate ResultIncomingUpdate
-	// if len(upd.Result) != 0 {
-	// 	lastUpdate = upd.Result[len(upd.Result)-1]
-	// }
-	// for {
-	// 	lastUpdate = Poller(client, &urls, &ParamGetUpdates{Offset: -1, Allowed_updates: []string{"message"}}, users, &lastUpdate)
-	// 	log.Println(users)
-
-	// 	// for _, val := range users {
-	// 	// 	msg := MessageToBot{
-	// 	// 		ChatId: val,
-	// 	// 		Text:   "Hello!",
-	// 	// 	}
-	// 	// 	if err := botSendMessage(client, &urls, &msg); err != nil {
-	// 	// 		log.Println(err)
-	// 	// 	}
-	// 	// }
-	// }
-
-}
