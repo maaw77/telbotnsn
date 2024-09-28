@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-
 	"encoding/json"
 	"errors"
 	"log"
@@ -85,6 +84,7 @@ func (c *ZabbixClient) Authentication() error {
 func (c *ZabbixClient) GetHost() error {
 	payload := ZabbixRequest{Jsonrpc: "2.0",
 		Method: "host.get",
+
 		Params: ZabbixParams{
 			Output:                 []string{"hostid", "host", "name", "maintenance_status"},
 			Search:                 map[string]string{"host": "*mikrot*"},
@@ -92,11 +92,11 @@ func (c *ZabbixClient) GetHost() error {
 			SearchByAny:            true},
 		Auth: c.Result,
 		Id:   c.Id}
+
 	b, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	// log.Println(string(b))
 
 	resp, err := http.Post(c.URL, "application/json-rpc", bytes.NewReader(b))
 	switch {
@@ -115,8 +115,7 @@ func (c *ZabbixClient) GetHost() error {
 	}
 
 	log.Println(zr)
-	log.Println()
-	log.Println(len(zr.Result))
+
 	return nil
 }
 
