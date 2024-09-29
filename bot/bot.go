@@ -12,8 +12,6 @@ import (
 
 const botUrlAPI string = "https://api.telegram.org/"
 
-var waitGroup sync.WaitGroup
-
 // An User represents a Telegram user or bot.
 type User struct {
 	Id            int
@@ -46,8 +44,9 @@ type IncomingUpdate struct {
 
 // A MessageToBot is a message sent to the user.
 type MessageToBot struct {
-	ChatId int    `json:"chat_id"` // User or chat ID.
-	Text   string `json:"text"`    // The text of the message.
+	ChatId    int    `json:"chat_id"` // User or chat ID.
+	Text      string `json:"text"`    // The text of the message.
+	ParseMode string `json:"parse_mode,omitempty"`
 }
 
 // A ParamGetUpdates presents the parameters of the getUpdates method.
@@ -113,12 +112,13 @@ func (b *Bot) SendMessage(msg *MessageToBot) error {
 	if err != nil {
 		return err
 	}
-
+	// log.Println(string(bJSON))
 	resp, err := http.Post(b.urls.sendMessageURL, "application/json", bytes.NewReader(bJSON))
 	if err != nil {
 		return err
 	}
-
+	// tx, _ := io.ReadAll(resp.Body)
+	// log.Println(string(tx))
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return errors.New(resp.Status)
@@ -128,7 +128,6 @@ func (b *Bot) SendMessage(msg *MessageToBot) error {
 
 // sengdMessages sends messages from the channel to users.
 func sendMessages(bot Bot, mQ <-chan MessageToBot) {
-	defer waitGroup.Done()
 	for msg := range mQ {
 		go func(b Bot, m MessageToBot) {
 
@@ -151,8 +150,12 @@ func Run(botToken string, mQ <-chan MessageToBot) {
 		log.Println("your bot has been authenticated.")
 	}
 
+	var waitGroup sync.WaitGroup
 	waitGroup.Add(1)
-	go sendMessages(*bot, mQ)
+	go func() {
+		waitGroup.Done()
+		sendMessages(*bot, mQ)
+	}()
 	waitGroup.Wait()
 
 }

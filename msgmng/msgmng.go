@@ -1,25 +1,25 @@
 package msgmng
 
 import (
-	"log"
-	"time"
+	"fmt"
 
 	"github.com/maaw77/telbotnsn/bot"
+	"github.com/maaw77/telbotnsn/zbx"
 )
 
-func MessageManager(mQ chan<- bot.MessageToBot) {
-	for {
-		select {
-		case mQ <- bot.MessageToBot{
-			ChatId: 80901973,
-			Text:   "Hello! 0",
-		}:
-		case mQ <- bot.MessageToBot{
-			ChatId: 80901973,
-			Text:   "Hello! 1",
-		}:
+func MessageManager(mQ chan<- bot.MessageToBot, fromZabbix <-chan zbx.ZabbixHost) {
+
+	usersId := []int{80901973}
+	for oZ := range fromZabbix {
+		for _, userId := range usersId {
+			text := fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v", oZ.NameZ, oZ.ProblemZ)
+			mQ <- bot.MessageToBot{
+				ChatId:    userId,
+				Text:      text,
+				ParseMode: "HTML",
+			}
 		}
-		log.Println("eng select")
-		log.Println(<-time.After(time.Second * 5))
+
 	}
+	close(mQ)
 }
