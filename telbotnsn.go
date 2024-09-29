@@ -1,4 +1,3 @@
-// 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
 package main
 
 import (
