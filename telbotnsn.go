@@ -1,9 +1,11 @@
+// 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
 package main
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -28,6 +30,8 @@ type ZabbixParams struct {
 	SearchByAny            bool              `json:"searchByAny,omitempty"`
 	Username               string            `json:"username,omitempty"`
 	Password               string            `json:"password,omitempty"`
+	Host                   string            `json:"host,omitempty"`
+	Monitored_hosts        int               `json:"monitored_hosts,omitempty"`
 }
 type ZabbixRequest struct {
 	Jsonrpc string       `json:"jsonrpc,omitempty"`
@@ -44,7 +48,8 @@ type ZabbixRequest struct {
 type ZabbixResponse struct {
 	Jsonrpc string              `json:"jsonrpc,omitempty"`
 	Result  []map[string]string `json:"result,omitempty"`
-	Id      int                 `json:"id,omitempty"`
+	// Hosts   []map[string]string `json:"host,omitempty"`
+	Id int `json:"id,omitempty"`
 }
 
 func (c *ZabbixClient) Authentication() error {
@@ -81,29 +86,30 @@ func (c *ZabbixClient) Authentication() error {
 	return nil
 }
 
-func (c *ZabbixClient) GetHost() error {
+func (c *ZabbixClient) GetHost(pattern string) ([]map[string]string, error) {
 	payload := ZabbixRequest{Jsonrpc: "2.0",
 		Method: "host.get",
-
 		Params: ZabbixParams{
-			Output:                 []string{"hostid", "host", "name", "maintenance_status"},
-			Search:                 map[string]string{"host": "*mikrot*"},
+			Output:                 []string{"hostid", "host", "name", "status"},
+			Search:                 map[string]string{"name": pattern},
 			SearchWildcardsEnabled: true,
-			SearchByAny:            true},
+			SearchByAny:            true,
+			Monitored_hosts:        1,
+		},
 		Auth: c.Result,
 		Id:   c.Id}
 
 	b, err := json.Marshal(payload)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	resp, err := http.Post(c.URL, "application/json-rpc", bytes.NewReader(b))
 	switch {
 	case err != nil:
-		return err
+		return nil, err
 	case resp.StatusCode != http.StatusOK:
-		return errors.New(resp.Status)
+		return nil, errors.New(resp.Status)
 	}
 
 	defer resp.Body.Close()
@@ -111,12 +117,64 @@ func (c *ZabbixClient) GetHost() error {
 	var zr ZabbixResponse
 
 	if err := dec.Decode(&zr); err != nil {
-		return err
+		return nil, err
 	}
 
-	log.Println(zr)
+	return zr.Result, nil
+}
 
-	return nil
+func (c *ZabbixClient) GetTrigger(hosts []map[string]string) ([]map[string]string, error) {
+	var outHost []map[string]string
+	for _, hst := range hosts {
+
+		payload := ZabbixRequest{Jsonrpc: "2.0",
+			Method: "trigger.get",
+
+			Params: ZabbixParams{
+				Output: []string{"status", "value", "description"},
+				// Search:                 map[string]string{"host": pattern},
+				SearchWildcardsEnabled: true,
+				SearchByAny:            true,
+				Host:                   hst["host"],
+			},
+			Auth: c.Result,
+			Id:   c.Id,
+		}
+
+		b, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := http.Post(c.URL, "application/json-rpc", bytes.NewReader(b))
+		switch {
+		case err != nil:
+			return nil, err
+		case resp.StatusCode != http.StatusOK:
+			return nil, errors.New(resp.Status)
+		}
+
+		defer resp.Body.Close()
+		// val, _ := io.ReadAll(resp.Body)
+		// log.Println(string(val))
+		dec := json.NewDecoder(resp.Body)
+		var zr ZabbixResponse
+
+		if err := dec.Decode(&zr); err != nil {
+			return nil, err
+		}
+		for _, trgr := range zr.Result {
+			if trgr["value"] == "1" {
+				hst["problem"] = trgr["description"]
+				fmt.Println(hst)
+				outHost = append(outHost, hst)
+			}
+
+		}
+
+	}
+
+	return outHost, nil
 }
 
 func Run(username string, password string) {
@@ -126,9 +184,21 @@ func Run(username string, password string) {
 		log.Fatal(err)
 	}
 	// log.Printf("%#v", client)
-	if err := client.GetHost(); err != nil {
+	// hosts, err := client.GetHost("*Микротик*")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	hosts, err := client.GetHost("*Березо*")
+	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println(hosts)
+	hostsOut, err := client.GetTrigger(hosts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(hostsOut)
 }
 
 func main() {
