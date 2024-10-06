@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"html"
 	"log"
 	"net/http"
+	"time"
 )
 
 const zabbixUrlAPI = "http://zabbix.gmkzoloto.ru/zabbix/api_jsonrpc.php"
 
-const PATTERN = "*Березо*"
+// const PATTERN = "*Микро*"
+var PATTERN = "*Березо*"
 
 type ZabbixHost struct {
 	HostidZ  string
@@ -130,6 +133,10 @@ func (c *ZabbixClient) GetHost(pattern string) ([]map[string]string, error) {
 
 func (c *ZabbixClient) GetTrigger(hosts []map[string]string, outZabbix chan<- ZabbixHost) error {
 	var outHost ZabbixHost
+	if hosts == nil {
+		return errors.New("hosts is nil")
+
+	}
 
 	for _, hst := range hosts {
 		outHost = ZabbixHost{
@@ -177,14 +184,15 @@ func (c *ZabbixClient) GetTrigger(hosts []map[string]string, outZabbix chan<- Za
 
 		for _, trgr := range zr.Result {
 			if trgr["value"] == "1" {
-				outHost.ProblemZ = append(outHost.ProblemZ, trgr["description"])
+				outHost.ProblemZ = append(outHost.ProblemZ, html.EscapeString(trgr["description"]))
 			}
 
 		}
-		if len(outHost.ProblemZ) > 0 {
-			// log.Println(outHost, "len=", len(outHost.ProblemZ))
-			outZabbix <- outHost
-		}
+		outZabbix <- outHost
+		// if len(outHost.ProblemZ) > 0 {
+		// 	// log.Println(outHost, "len=", len(outHost.ProblemZ))
+		// 	outZabbix <- outHost
+		// }
 
 	}
 
@@ -192,20 +200,25 @@ func (c *ZabbixClient) GetTrigger(hosts []map[string]string, outZabbix chan<- Za
 }
 
 func Run(username string, password string, outZabbix chan<- ZabbixHost) {
-	client := ZabbixClient{Username: username, Password: password, URL: zabbixUrlAPI}
+	for {
+		client := ZabbixClient{Username: username, Password: password, URL: zabbixUrlAPI}
 
-	if err := client.Authentication(); err != nil {
-		log.Fatal(err)
-	}
+		if err := client.Authentication(); err != nil {
+			log.Fatal(err)
+		}
 
-	hosts, err := client.GetHost(PATTERN)
-	if err != nil {
-		log.Fatal(err)
-	}
+		hosts, err := client.GetHost(PATTERN)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	if err := client.GetTrigger(hosts, outZabbix); err != nil {
-		log.Fatal(err)
+		if err := client.GetTrigger(hosts, outZabbix); err != nil {
+			log.Fatal(err)
+		}
+
+		time.Sleep(time.Minute)
+		log.Println("zbx is awake")
+
 	}
 	close(outZabbix)
-
 }

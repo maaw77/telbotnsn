@@ -8,7 +8,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/maaw77/telbotnsn/bot"
-	"github.com/maaw77/telbotnsn/msgmng"
+	"github.com/maaw77/telbotnsn/msgmngr"
 	"github.com/maaw77/telbotnsn/zbx"
 )
 
@@ -19,6 +19,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	regUsers := msgmngr.RegesteredUsers{Users: map[string]bot.User{"maaw77": {Username: "maaw77", Id: 80901973}}}
+	svdHosts := msgmngr.SavedHosts{Hosts: map[string]zbx.ZabbixHost{}}
 	outZabbix := make(chan zbx.ZabbixHost)
 	messageQueue := make(chan bot.MessageToBot, 10)
 	var waitGroup sync.WaitGroup
@@ -33,7 +35,7 @@ func main() {
 	waitGroup.Add(1)
 	go func() {
 		defer waitGroup.Done()
-		msgmng.MessageManager(messageQueue, outZabbix)
+		msgmngr.MessageManager(messageQueue, outZabbix, &regUsers, &svdHosts)
 
 	}()
 
@@ -44,6 +46,5 @@ func main() {
 	}()
 
 	waitGroup.Wait()
-	// close(messageQueue)
 
 }
