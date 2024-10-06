@@ -31,6 +31,7 @@ type ZabbixClient struct {
 	URL      string
 }
 
+// For information about the Zabbix API, see the link https://www.zabbix.com/documentation/current/en/manual/api.
 type ZabbixParams struct {
 	Output                 []string          `json:"output,omitempty"`
 	Search                 map[string]string `json:"search,omitempty"`
@@ -60,6 +61,7 @@ type ZabbixResponse struct {
 	Id int `json:"id,omitempty"`
 }
 
+// Authentication authenticates the Zabbix API client.
 func (c *ZabbixClient) Authentication() error {
 	payload := ZabbixRequest{Jsonrpc: "2.0",
 		Method: "user.login",
@@ -94,6 +96,7 @@ func (c *ZabbixClient) Authentication() error {
 	return nil
 }
 
+// GetHost retrieves hosts according to the specified hostname pattern.
 func (c *ZabbixClient) GetHost(pattern string) ([]map[string]string, error) {
 	payload := ZabbixRequest{Jsonrpc: "2.0",
 		Method: "host.get",
@@ -131,6 +134,9 @@ func (c *ZabbixClient) GetHost(pattern string) ([]map[string]string, error) {
 	return zr.Result, nil
 }
 
+//	GetTrigger retrieves triggered triggers for the specified hosts.
+//
+// It then sends information about the hosts over the specified channel (outZabbix).
 func (c *ZabbixClient) GetTrigger(hosts []map[string]string, outZabbix chan<- ZabbixHost) error {
 	var outHost ZabbixHost
 	if hosts == nil {
@@ -199,6 +205,7 @@ func (c *ZabbixClient) GetTrigger(hosts []map[string]string, outZabbix chan<- Za
 	return nil
 }
 
+// Run launches the Zabbix API client.
 func Run(username string, password string, outZabbix chan<- ZabbixHost) {
 	for {
 		client := ZabbixClient{Username: username, Password: password, URL: zabbixUrlAPI}
@@ -216,9 +223,9 @@ func Run(username string, password string, outZabbix chan<- ZabbixHost) {
 			log.Fatal(err)
 		}
 
-		time.Sleep(time.Minute)
+		time.Sleep(3 * time.Minute)
 		log.Println("zbx is awake")
 
 	}
-	close(outZabbix)
+	// close(outZabbix)
 }

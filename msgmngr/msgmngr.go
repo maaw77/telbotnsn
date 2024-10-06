@@ -20,6 +20,7 @@ type RegesteredUsers struct {
 	Users map[string]bot.User
 }
 
+// sendMessage sends messages to registered users.
 func sendMessage(mQ chan<- bot.MessageToBot, oZ zbx.ZabbixHost, rgdUsers *RegesteredUsers) {
 	rgdUsers.RWD.RLock()
 	for _, user := range rgdUsers.Users {
@@ -35,6 +36,7 @@ func sendMessage(mQ chan<- bot.MessageToBot, oZ zbx.ZabbixHost, rgdUsers *Regest
 	rgdUsers.RWD.RUnlock()
 }
 
+// MessageManage controls the sending of messages from Zabbix to the Telegram bot
 func MessageManager(mQ chan<- bot.MessageToBot, fromZabbix <-chan zbx.ZabbixHost, rgdUsers *RegesteredUsers, svdHosts *SavedHosts) {
 	// usersId := []int{80901973}
 	for oZ := range fromZabbix {
@@ -49,10 +51,11 @@ func MessageManager(mQ chan<- bot.MessageToBot, fromZabbix <-chan zbx.ZabbixHost
 			svdHosts.Hosts[oZ.HostidZ] = oZ
 			svdHosts.RWD.Unlock()
 		} else if ok {
+			if len(oZ.ProblemZ) == 0 {
+				oZ.ProblemZ = append(oZ.ProblemZ, "No problems at all!")
+			}
 			if slices.Compare(hst.ProblemZ, oZ.ProblemZ) != 0 {
-				if len(oZ.ProblemZ) == 0 {
-					oZ.ProblemZ = append(oZ.ProblemZ, "No problem at all!")
-				}
+
 				sendMessage(mQ, oZ, rgdUsers)
 				svdHosts.RWD.Lock()
 				svdHosts.Hosts[oZ.HostidZ] = oZ

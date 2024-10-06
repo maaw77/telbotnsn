@@ -13,6 +13,9 @@ import (
 )
 
 func main() {
+
+	// implement problem counting???
+
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	if err := godotenv.Load(".env"); err != nil {
