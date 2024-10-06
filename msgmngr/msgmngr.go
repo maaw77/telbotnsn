@@ -23,11 +23,13 @@ type RegesteredUsers struct {
 func sendMessage(mQ chan<- bot.MessageToBot, oZ zbx.ZabbixHost, rgdUsers *RegesteredUsers) {
 	rgdUsers.RWD.RLock()
 	for _, user := range rgdUsers.Users {
-		text := fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v", oZ.NameZ, oZ.ProblemZ)
-		mQ <- bot.MessageToBot{
-			ChatId:    user.Id,
-			Text:      text,
-			ParseMode: "HTML",
+		if user.Id != 0 {
+			text := fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v", oZ.NameZ, oZ.ProblemZ)
+			mQ <- bot.MessageToBot{
+				ChatId:    user.Id,
+				Text:      text,
+				ParseMode: "HTML",
+			}
 		}
 	}
 	rgdUsers.RWD.RUnlock()
@@ -48,6 +50,9 @@ func MessageManager(mQ chan<- bot.MessageToBot, fromZabbix <-chan zbx.ZabbixHost
 			svdHosts.RWD.Unlock()
 		} else if ok {
 			if slices.Compare(hst.ProblemZ, oZ.ProblemZ) != 0 {
+				if len(oZ.ProblemZ) == 0 {
+					oZ.ProblemZ = append(oZ.ProblemZ, "No problem at all!")
+				}
 				sendMessage(mQ, oZ, rgdUsers)
 				svdHosts.RWD.Lock()
 				svdHosts.Hosts[oZ.HostidZ] = oZ
