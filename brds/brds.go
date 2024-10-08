@@ -3,25 +3,73 @@ package brds
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/redis/go-redis/v9"
 )
 
-// addUsers adds users to whom messages will be sent.
-func AddUsers(client *redis.Client, ctx context.Context, users []string) error {
+// User represents represents registered users.
+type User struct {
+	Id           int    `redis:"id"`
+	IsBot        bool   `redis:"is_bot"`
+	FirstName    string `redis:"first_name"`
+	LastName     string `redis:"last_name"`
+	Username     string `redis:"username"`
+	LanguageCode string `redis:"language_code"`
+}
+
+// RegUsers registers the users to whom messages will be sent.
+func RegUsers(client *redis.Client, ctx context.Context, users []string) error {
 	if len(users) < 1 {
 		return errors.New("the list of users is empty")
 	}
-
-	for _, user := range users {
-		if err := client.HSet(ctx, "user:"+user, "id", "0").Err(); err != nil {
+	for i, user := range users {
+		fmt.Println("User", i+1, ": ", user)
+		if err := AddUser(client, ctx, User{Username: user}); err != nil {
 			return err
 		}
-		// log.Println("user:"+user+"=", client.HGetAll(ctx, "user:"+user).Val())
+
 	}
 
 	return nil
+
+}
+
+// addUsers adds user to whom messages will be sent.
+func AddUser(client *redis.Client, ctx context.Context, user User) error {
+	if err := client.HSet(ctx, "user:"+user.Username, user).Err(); err != nil {
+		return err
+	}
+
+	// for _, user := range users {
+	// 	if err := client.HSet(ctx, "user:"+user, "id", "0").Err(); err != nil {
+	// 		return err
+	// 	}
+	// 	// log.Println("user:"+user+"=", client.HGetAll(ctx, "user:"+user).Val())
+	// }
+
+	return nil
+}
+
+// ListUsers returns a list(hash table) of registered users.
+func ListUsers(client *redis.Client, ctx context.Context) (map[string]User, error) {
+	var usr User
+	users := make(map[string]User)
+
+	itr := client.Scan(ctx, 0, "user:*", 0).Iterator()
+	for itr.Next(ctx) {
+
+		if err := client.HGetAll(ctx, itr.Val()).Scan(&usr); err != nil {
+			return users, err
+		}
+		users[usr.Username] = usr
+	}
+	if err := itr.Err(); err != nil {
+		return users, err
+	}
+
+	return users, nil
 }
 
 // DelUsers removes users from the mailing list.
@@ -53,21 +101,6 @@ func SaveUsers(client *redis.Client, ctx context.Context, users map[string]map[s
 	}
 
 	return nil
-}
-
-// ListUsers returns a list(hash table) of registered users.
-func ListUsers(client *redis.Client, ctx context.Context) (map[string]map[string]string, error) {
-	users := make(map[string]map[string]string)
-
-	itr := client.Scan(ctx, 0, "user*", 0).Iterator()
-	for itr.Next(ctx) {
-		users[itr.Val()] = client.HGetAll(ctx, itr.Val()).Val()
-	}
-	if err := itr.Err(); err != nil {
-		return users, err
-	}
-
-	return users, nil
 }
 
 // func main() {

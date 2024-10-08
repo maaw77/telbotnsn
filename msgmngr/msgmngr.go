@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/maaw77/telbotnsn/bot"
+	"github.com/maaw77/telbotnsn/brds"
 	"github.com/maaw77/telbotnsn/zbx"
 )
 
@@ -17,7 +18,7 @@ type SavedHosts struct {
 
 type RegesteredUsers struct {
 	RWD   sync.RWMutex
-	Users map[string]bot.User
+	Users map[string]brds.User
 }
 
 // sendMessage sends messages to registered users.
