@@ -4,25 +4,14 @@ import (
 	"fmt"
 	"log"
 	"slices"
-	"sync"
 
 	"github.com/maaw77/telbotnsn/bot"
 	"github.com/maaw77/telbotnsn/brds"
 	"github.com/maaw77/telbotnsn/zbx"
 )
 
-type SavedHosts struct {
-	RWD   sync.RWMutex
-	Hosts map[string]zbx.ZabbixHost
-}
-
-type RegesteredUsers struct {
-	RWD   sync.RWMutex
-	Users map[string]brds.User
-}
-
 // sendMessage sends messages to registered users.
-func sendMessage(mQ chan<- bot.MessageToBot, oZ zbx.ZabbixHost, rgdUsers *RegesteredUsers) {
+func sendMessage(mQ chan<- bot.MessageToBot, oZ zbx.ZabbixHost, rgdUsers *brds.RegesteredUsers) {
 	rgdUsers.RWD.RLock()
 	for _, user := range rgdUsers.Users {
 		if user.Id != 0 {
@@ -38,7 +27,7 @@ func sendMessage(mQ chan<- bot.MessageToBot, oZ zbx.ZabbixHost, rgdUsers *Regest
 }
 
 // MessageManage controls the sending of messages from Zabbix to the Telegram bot
-func MessageManager(mQ chan<- bot.MessageToBot, fromZabbix <-chan zbx.ZabbixHost, rgdUsers *RegesteredUsers, svdHosts *SavedHosts) {
+func MessageManager(mQ chan<- bot.MessageToBot, fromZabbix <-chan zbx.ZabbixHost, rgdUsers *brds.RegesteredUsers, svdHosts *brds.SavedHosts) {
 	// usersId := []int{80901973}
 	for oZ := range fromZabbix {
 		svdHosts.RWD.RLock()

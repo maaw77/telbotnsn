@@ -5,9 +5,22 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/redis/go-redis/v9"
+
+	"github.com/maaw77/telbotnsn/zbx"
 )
+
+type SavedHosts struct {
+	RWD   sync.RWMutex
+	Hosts map[string]zbx.ZabbixHost
+}
+
+type RegesteredUsers struct {
+	RWD   sync.RWMutex
+	Users map[string]User
+}
 
 // User represents represents registered users.
 type User struct {
@@ -19,17 +32,27 @@ type User struct {
 	LanguageCode string `redis:"language_code"`
 }
 
+// InitClient initializes the Redis client.
+func InitClient() (*redis.Client, context.Context) {
+	ctx := context.Background()
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6380",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+	return client, ctx
+}
+
 // RegUsers registers the users to whom messages will be sent.
 func RegUsers(client *redis.Client, ctx context.Context, users []string) error {
 	if len(users) < 1 {
 		return errors.New("the list of users is empty")
 	}
-	for i, user := range users {
-		fmt.Println("User", i+1, ": ", user)
+	for _, user := range users {
 		if err := AddUser(client, ctx, User{Username: user}); err != nil {
 			return err
 		}
-
+		fmt.Println(user, "is registered.")
 	}
 
 	return nil
@@ -41,14 +64,6 @@ func AddUser(client *redis.Client, ctx context.Context, user User) error {
 	if err := client.HSet(ctx, "user:"+user.Username, user).Err(); err != nil {
 		return err
 	}
-
-	// for _, user := range users {
-	// 	if err := client.HSet(ctx, "user:"+user, "id", "0").Err(); err != nil {
-	// 		return err
-	// 	}
-	// 	// log.Println("user:"+user+"=", client.HGetAll(ctx, "user:"+user).Val())
-	// }
-
 	return nil
 }
 
@@ -59,7 +74,6 @@ func ListUsers(client *redis.Client, ctx context.Context) (map[string]User, erro
 
 	itr := client.Scan(ctx, 0, "user:*", 0).Iterator()
 	for itr.Next(ctx) {
-
 		if err := client.HGetAll(ctx, itr.Val()).Scan(&usr); err != nil {
 			return users, err
 		}
@@ -89,20 +103,50 @@ func DelUsers(client *redis.Client, ctx context.Context, users []string) error {
 	return nil
 }
 
-// SaveUsers  saves the list of users to the database.
-func SaveUsers(client *redis.Client, ctx context.Context, users map[string]map[string]string) error {
-	if len(users) < 1 {
-		return errors.New("the list of users is empty")
+func UpdateRegUsers(client *redis.Client, ctx context.Context, regUsers *RegesteredUsers) error {
+	users, err := ListUsers(client, ctx)
+	if err != nil {
+		return err
 	}
-	for key, val := range users {
-		if err := client.HSet(ctx, key, val).Err(); err != nil {
-			return err
+	if len(users) < 1 {
+		regUsers.RWD.Lock()
+		regUsers.Users = make(map[string]User)
+		regUsers.RWD.Unlock()
+	} else {
+		regUsers.RWD.Lock()
+		if len(regUsers.Users) == 0 {
+			regUsers.Users = users
+		} else {
+			for k, v := range regUsers.Users {
+				_, ok := users[k]
+				if ok && v.Id != 0 {
+					users[k] = v
+				}
+				regUsers.Users = users
+				// Add SaveRegUsers  ????
+			}
+
 		}
+
+		regUsers.RWD.Unlock()
 	}
 
 	return nil
 }
 
+// // SaveUsers  saves the list of users to the database.
+// func SaveUsers(client *redis.Client, ctx context.Context, users map[string]map[string]string) error {
+// 	if len(users) < 1 {
+// 		return errors.New("the list of users is empty")
+// 	}
+// 	for key, val := range users {
+// 		if err := client.HSet(ctx, key, val).Err(); err != nil {
+// 			return err
+// 		}
+// 	}
+
+// 	return nil
+// }
 // func main() {
 // 	log.SetFlags(log.Ldate | log.Lshortfile) //?????
 
