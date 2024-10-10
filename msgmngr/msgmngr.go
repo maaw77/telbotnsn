@@ -2,7 +2,6 @@ package msgmngr
 
 import (
 	"fmt"
-	"log"
 	"slices"
 
 	"github.com/maaw77/telbotnsn/bot"
@@ -53,6 +52,6 @@ func MessageManager(mQ chan<- bot.MessageToBot, fromZabbix <-chan zbx.ZabbixHost
 			}
 		}
 	}
-	log.Println(svdHosts.Hosts, len(svdHosts.Hosts))
+	// log.Println(svdHosts.Hosts, len(svdHosts.Hosts))
 	// close(mQ)
 }

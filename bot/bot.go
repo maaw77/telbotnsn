@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 )
 
 const botUrlAPI string = "https://api.telegram.org/"
@@ -128,14 +129,17 @@ func (b *Bot) SendMessage(msg *MessageToBot) error {
 
 // sengdMessages sends messages from the channel to users.
 func sendMessages(bot Bot, mQ <-chan MessageToBot) {
+	poolMaxSize := make(chan uint16, 5)
 	for msg := range mQ {
+		poolMaxSize <- 0
 		go func(b Bot, m MessageToBot) {
 
 			if err := bot.SendMessage(&m); err != nil {
 				log.Println(err)
-
 			}
+			<-poolMaxSize
 		}(bot, msg)
+		<-time.After(1 * time.Second)
 	}
 }
 

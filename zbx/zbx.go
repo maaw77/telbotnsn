@@ -12,8 +12,9 @@ import (
 
 const zabbixUrlAPI = "http://zabbix.gmkzoloto.ru/zabbix/api_jsonrpc.php"
 
-// const PATTERN = "*Микро*"
-var PATTERN = "*Березо*"
+// "*Микро*"
+
+const WILDCARD = "*Березо*"
 
 type ZabbixHost struct {
 	HostidZ  string
@@ -214,7 +215,7 @@ func Run(username string, password string, outZabbix chan<- ZabbixHost) {
 			log.Fatal(err)
 		}
 
-		hosts, err := client.GetHost(PATTERN)
+		hosts, err := client.GetHost(WILDCARD)
 		if err != nil {
 			log.Fatal(err)
 		}

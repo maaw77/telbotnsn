@@ -33,7 +33,16 @@ func main() {
 	}
 	switch argumentsCLI[1] {
 	case "run":
-		regUsers := brds.RegesteredUsers{Users: map[string]brds.User{"maaw77": {Username: "maaw77", Id: 80901973}}}
+		// regUsers := brds.RegesteredUsers{Users: map[string]brds.User{"maaw77": {Username: "maaw77", Id: 80901973}}}
+		var regUsers brds.RegesteredUsers
+		client, ctx := brds.InitClient()
+		if err := brds.UpdateRegUsers(client, ctx, &regUsers); err != nil {
+			log.Fatal(err)
+		}
+		regUsers.RWD.RLock()
+		log.Println(regUsers.Users)
+		regUsers.RWD.RUnlock()
+
 		svdHosts := brds.SavedHosts{Hosts: map[string]zbx.ZabbixHost{}}
 		outZabbix := make(chan zbx.ZabbixHost)
 		messageQueue := make(chan bot.MessageToBot, 5)
@@ -91,6 +100,7 @@ func main() {
 			if err := brds.RegUsers(client, ctx, argumentsCLI[3:]); err != nil {
 				log.Fatal(err)
 			}
+			fmt.Println(argumentsCLI[3:], "has been registered.")
 		case "-del":
 			if len(argumentsCLI) < 4 {
 				fmt.Println("Usage: users -add|-del <username1> <username2> ...")

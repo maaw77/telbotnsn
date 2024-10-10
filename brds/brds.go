@@ -3,7 +3,6 @@ package brds
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"sync"
 
@@ -52,7 +51,7 @@ func RegUsers(client *redis.Client, ctx context.Context, users []string) error {
 		if err := AddUser(client, ctx, User{Username: user}); err != nil {
 			return err
 		}
-		fmt.Println(user, "is registered.")
+
 	}
 
 	return nil
@@ -103,17 +102,22 @@ func DelUsers(client *redis.Client, ctx context.Context, users []string) error {
 	return nil
 }
 
+// UpdateRegUsers updates the list of registered users (type RegesteredUsers) from the database.
 func UpdateRegUsers(client *redis.Client, ctx context.Context, regUsers *RegesteredUsers) error {
 	users, err := ListUsers(client, ctx)
+	log.Println(users)
 	if err != nil {
 		return err
 	}
 	if len(users) < 1 {
+		log.Println("len(users) < 1 ")
 		regUsers.RWD.Lock()
 		regUsers.Users = make(map[string]User)
 		regUsers.RWD.Unlock()
 	} else {
+		log.Println("len(users) > 1 ")
 		regUsers.RWD.Lock()
+
 		if len(regUsers.Users) == 0 {
 			regUsers.Users = users
 		} else {
@@ -123,30 +127,32 @@ func UpdateRegUsers(client *redis.Client, ctx context.Context, regUsers *Regeste
 					users[k] = v
 				}
 				regUsers.Users = users
-				// Add SaveRegUsers  ????
 			}
 
 		}
 
-		regUsers.RWD.Unlock()
+	}
+	regUsers.RWD.Unlock()
+	if err := SaveRegUsers(client, ctx, regUsers); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-// // SaveUsers  saves the list of users to the database.
-// func SaveUsers(client *redis.Client, ctx context.Context, users map[string]map[string]string) error {
-// 	if len(users) < 1 {
-// 		return errors.New("the list of users is empty")
-// 	}
-// 	for key, val := range users {
-// 		if err := client.HSet(ctx, key, val).Err(); err != nil {
-// 			return err
-// 		}
-// 	}
+// SaveUsers  saves a list of registered users (type RegesteredUsers) in the database.
+func SaveRegUsers(client *redis.Client, ctx context.Context, regUsers *RegesteredUsers) error {
+	regUsers.RWD.RLock()
+	defer regUsers.RWD.RUnlock()
+	for _, v := range regUsers.Users {
+		if err := AddUser(client, ctx, v); err != nil {
+			return err
+		}
+	}
 
-// 	return nil
-// }
+	return nil
+}
+
 // func main() {
 // 	log.SetFlags(log.Ldate | log.Lshortfile) //?????
 
