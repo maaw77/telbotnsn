@@ -65,7 +65,7 @@ func main() {
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
-			bot.Run(os.Getenv("BOT_TOKEN"), messageQueue)
+			bot.Run(os.Getenv("BOT_TOKEN"), messageQueue, &regUsers)
 		}()
 
 		waitGroup.Wait()
@@ -106,8 +106,11 @@ func main() {
 				fmt.Println("Usage: users -add|-del <username1> <username2> ...")
 				return
 			}
-			if err := brds.DelUsers(client, ctx, argumentsCLI[3:]); err != nil {
+			countDelUsers, err := brds.DelUsers(client, ctx, argumentsCLI[3:])
+			if err != nil {
 				log.Fatal(err)
+			} else {
+				fmt.Printf("%d user(s) deleted.\n", countDelUsers)
 			}
 		default:
 			fmt.Println("Not a valid options")

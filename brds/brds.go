@@ -18,7 +18,7 @@ type SavedHosts struct {
 
 type RegesteredUsers struct {
 	RWD   sync.RWMutex
-	Users map[string]User
+	Users map[string]User // Uesrs[User.Username]User
 }
 
 // User represents represents registered users.
@@ -86,20 +86,23 @@ func ListUsers(client *redis.Client, ctx context.Context) (map[string]User, erro
 }
 
 // DelUsers removes users from the mailing list.
-func DelUsers(client *redis.Client, ctx context.Context, users []string) error {
+func DelUsers(client *redis.Client, ctx context.Context, users []string) (int32, error) {
+	var countDelUsers int32
 	if len(users) < 1 {
-		return errors.New("the list of users is empty")
+		return countDelUsers, errors.New("the list of users is empty")
 	}
 	for _, user := range users {
 
 		if res, err := client.Del(ctx, "user:"+user).Result(); err != nil {
-			return err
-		} else {
-			log.Println("res=", res)
+			return countDelUsers, err
+		} else if res > 0 {
+			countDelUsers++
+			log.Printf("%s  has been deleted\n", user)
 		}
+
 	}
 
-	return nil
+	return countDelUsers, nil
 }
 
 // UpdateRegUsers updates the list of registered users (type RegesteredUsers) from the database.
@@ -114,6 +117,7 @@ func UpdateRegUsers(client *redis.Client, ctx context.Context, regUsers *Regeste
 		regUsers.RWD.Lock()
 		regUsers.Users = make(map[string]User)
 		regUsers.RWD.Unlock()
+		// return nil
 	} else {
 		log.Println("len(users) > 1 ")
 		regUsers.RWD.Lock()
@@ -130,17 +134,17 @@ func UpdateRegUsers(client *redis.Client, ctx context.Context, regUsers *Regeste
 			}
 
 		}
+		regUsers.RWD.Unlock()
+	}
 
-	}
-	regUsers.RWD.Unlock()
-	if err := SaveRegUsers(client, ctx, regUsers); err != nil {
-		return err
-	}
+	// if err := SaveRegUsers(client, ctx, regUsers); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
 
-// SaveUsers  saves a list of registered users (type RegesteredUsers) in the database.
+// SaveUsers saves a list of registered users (type RegesteredUsers) in the database.
 func SaveRegUsers(client *redis.Client, ctx context.Context, regUsers *RegesteredUsers) error {
 	regUsers.RWD.RLock()
 	defer regUsers.RWD.RUnlock()
