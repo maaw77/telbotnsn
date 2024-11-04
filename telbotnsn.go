@@ -16,8 +16,6 @@ import (
 
 func main() {
 
-	// implement problem counting???
-
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	if err := godotenv.Load(".env"); err != nil {
@@ -25,7 +23,6 @@ func main() {
 	}
 
 	argumentsCLI := os.Args
-	// log.Println(os.Getenv("ZABBIX_WILDCARDSHOSTS"))
 
 	if len(argumentsCLI) < 2 {
 		fmt.Println("Usage: run|users <arguments>")
@@ -33,7 +30,6 @@ func main() {
 	}
 	switch argumentsCLI[1] {
 	case "run":
-		// regUsers := brds.RegesteredUsers{Users: map[string]brds.User{"maaw77": {Username: "maaw77", Id: 80901973}}}
 		var regUsers brds.RegesteredUsers
 		client, ctx := brds.InitClient()
 		if err := brds.UpdateRegUsers(client, ctx, &regUsers); err != nil {
@@ -44,28 +40,38 @@ func main() {
 		regUsers.RWD.RUnlock()
 
 		svdHosts := brds.SavedHosts{Hosts: map[string]zbx.ZabbixHost{}}
-		outZabbix := make(chan zbx.ZabbixHost)
-		messageQueue := make(chan bot.MessageToBot, 5)
+		svdHosts.RWD.Lock()
+		svdHosts.Hosts["Host_1"] = zbx.ZabbixHost{HostidZ: "111",
+			NameZ: "Host_1"}
+		svdHosts.Hosts["Host_2"] = zbx.ZabbixHost{HostidZ: "222",
+			NameZ: "Host_2"}
+		svdHosts.Hosts["Host_3"] = zbx.ZabbixHost{HostidZ: "333",
+			NameZ: "Host_3"}
+		svdHosts.RWD.Unlock()
+		// outZabbix := make(chan zbx.ZabbixHost)
+		messageQueue := make(chan msgmngr.MessageToBot, 5)
+		commandQueueFromBot := make(chan msgmngr.CommandFromBot, 5)
+
 		var waitGroup sync.WaitGroup
 
+		// waitGroup.Add(1)
+		// go func() {
+		// 	defer waitGroup.Done()
+		// 	zbx.Run(os.Getenv("ZABBIX_USERNAME"), os.Getenv("ZABBIX_PASSWORD"), outZabbix)
+
+		// }()
+
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
-			zbx.Run(os.Getenv("ZABBIX_USERNAME"), os.Getenv("ZABBIX_PASSWORD"), outZabbix)
+			msgmngr.MessageManager(messageQueue, commandQueueFromBot, &regUsers, &svdHosts)
 
 		}()
 
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
-			msgmngr.MessageManager(messageQueue, outZabbix, &regUsers, &svdHosts)
-
-		}()
-
-		waitGroup.Add(1)
-		go func() {
-			defer waitGroup.Done()
-			bot.Run(os.Getenv("BOT_TOKEN"), messageQueue, &regUsers)
+			bot.Run(os.Getenv("BOT_TOKEN"), messageQueue, commandQueueFromBot, &regUsers)
 		}()
 
 		waitGroup.Wait()
