@@ -173,59 +173,149 @@ func poller(bot Bot, mQ chan<- MessageToBot, regUsers *brds.RegesteredUsers) {
 
 	for {
 		results, err := bot.GetUpdates(ParamGetUpdates{Offset: lastIDUpdate + 1, Timeout: 3, Allowed_updates: []string{"message"}})
+
 		if err != nil {
 			log.Println(err)
-		} else if results.Ok {
+		} else {
 			for _, res := range results.Result {
 				if res.UpdateId > lastIDUpdate {
 					lastIDUpdate = res.UpdateId
 				}
-				log.Printf("%#v", res)
+
 				switch res.Message.Text {
 				case "/start":
-					log.Println("Command start")
-
+					mQ <- MessageToBot{
+						ChatId:    res.Message.From.Id,
+						Text:      "Command is 'start'",
+						ParseMode: "HTML",
+					}
 					if err := brds.UpdateRegUsers(client, ctx, regUsers); err != nil {
 						log.Println(err)
-					}
-
-					regUsers.RWD.Lock()
-					log.Println(regUsers.Users)
-					temp, ok := regUsers.Users[res.Message.From.Username]
-					log.Println("Temp", temp, res.Message.From.Username)
-					if ok {
-						regUsers.Users[res.Message.From.Username] = brds.User{
-							Id:           res.Message.From.Id,
-							IsBot:        res.Message.From.IsBot,
-							FirstName:    res.Message.From.FirstName,
-							LastName:     res.Message.From.LastName,
-							Username:     res.Message.From.Username,
-							LanguageCode: res.Message.From.LanguageCode,
-						}
-						brds.SaveRegUsers(client, ctx, regUsers)
 					} else {
+						regUsers.RWD.RLock()
+						_, ok := regUsers.Users[res.Message.From.Username]
+						regUsers.RWD.RUnlock()
+						if ok {
+							mQ <- MessageToBot{
+								ChatId:    res.Message.From.Id,
+								Text:      "<i>You are authenticated!</i>",
+								ParseMode: "HTML",
+							}
+							regUsers.RWD.Lock()
+							regUsers.Users[res.Message.From.Username] = brds.User{Id: res.Message.From.Id,
+								IsBot:        res.Message.From.IsBot,
+								FirstName:    res.Message.From.FirstName,
+								LastName:     res.Message.From.LastName,
+								Username:     res.Message.From.Username,
+								LanguageCode: res.Message.From.LanguageCode,
+							}
+							regUsers.RWD.Unlock()
+
+							if err := brds.SaveRegUsers(client, ctx, regUsers); err != nil {
+								log.Println(err)
+							}
+
+						} else {
+							mQ <- MessageToBot{
+								ChatId:    res.Message.From.Id,
+								Text:      "<i>You are not registered!</i>",
+								ParseMode: "HTML",
+							}
+						}
+					}
+				case "/list":
+					mQ <- MessageToBot{
+						ChatId:    res.Message.From.Id,
+						Text:      "Command is 'list'",
+						ParseMode: "HTML",
+					}
+					regUsers.RWD.RLock()
+					userBot, ok := regUsers.Users[res.Message.From.Username]
+					regUsers.RWD.RUnlock()
+					if !ok || userBot.Id != res.Message.From.Id {
 						mQ <- MessageToBot{
-							ChatId: res.Message.From.Id,
-							// Text:      res.Message.Text,
-							Text:      "<i>You are not registered.</i>",
+							ChatId:    res.Message.From.Id,
+							Text:      "<i>You aren't authenticated!\nUse the '/start' command.</i>",
 							ParseMode: "HTML",
 						}
+
+					} else {
+
 					}
-					regUsers.RWD.Unlock()
+				case "/help":
+					mQ <- MessageToBot{
+						ChatId:    res.Message.From.Id,
+						Text:      "<i>Use the following commands: /help | /start | /list.</i>",
+						ParseMode: "HTML",
+					}
 				default:
 					mQ <- MessageToBot{
-						ChatId: res.Message.From.Id,
-						// Text:      res.Message.Text,
-						Text:      "<i>Unknow command.</i>",
+						ChatId:    res.Message.From.Id,
+						Text:      "<i>Unknow command.\nUse the '/help' command.</i>",
 						ParseMode: "HTML",
 					}
 				}
-
 			}
 		}
 	}
-
 }
+
+// 	if err != nil {
+// 		log.Println(err)
+// 	} else if results.Ok {
+// 		for _, res := range results.Result {
+// 			if res.UpdateId > lastIDUpdate {
+// 				lastIDUpdate = res.UpdateId
+// 			}
+// 			log.Printf("%#v", res)
+// 			switch res.Message.Text {
+// 			case "/start":
+// 				log.Println("Command start")
+
+// 				if err := brds.UpdateRegUsers(client, ctx, regUsers); err != nil {
+// 					log.Println(err)
+// 				}
+
+// 				regUsers.RWD.Lock()
+// 				log.Println(regUsers.Users)
+// 				temp, ok := regUsers.Users[res.Message.From.Username]
+// 				log.Println("Temp", temp, res.Message.From.Username)
+// 				if ok {
+// 					regUsers.Users[res.Message.From.Username] = brds.User{
+// 						Id:           res.Message.From.Id,
+// 						IsBot:        res.Message.From.IsBot,
+// 						FirstName:    res.Message.From.FirstName,
+// 						LastName:     res.Message.From.LastName,
+// 						Username:     res.Message.From.Username,
+// 						LanguageCode: res.Message.From.LanguageCode,
+// 					}
+// 					brds.SaveRegUsers(client, ctx, regUsers)
+// 					mQ <- MessageToBot{
+// 						ChatId: res.Message.From.Id,
+// 						// Text:      res.Message.Text,
+// 						Text:      "<i>Authentication was successful.</i>",
+// 						ParseMode: "HTML",
+// 					}
+// 				} else {
+// 					mQ <- MessageToBot{
+// 						ChatId: res.Message.From.Id,
+// 						// Text:      res.Message.Text,
+// 						Text:      "<i>You are not registered.</i>",
+// 						ParseMode: "HTML",
+// 					}
+// 				}
+// 				regUsers.RWD.Unlock()
+// 			default:
+// 				mQ <- MessageToBot{
+// 					ChatId: res.Message.From.Id,
+// 					// Text:      res.Message.Text,
+// 					Text:      "<i>Unknow command.</i>",
+// 					ParseMode: "HTML",
+// 				}
+// 			}
+
+// 		}
+// 	}
 
 // botRun launches the bot.
 func Run(botToken string, mQ chan MessageToBot, rgdUsers *brds.RegesteredUsers) {

@@ -130,9 +130,8 @@ func UpdateRegUsers(client *redis.Client, ctx context.Context, regUsers *Regeste
 				if ok && v.Id != 0 {
 					users[k] = v
 				}
-				regUsers.Users = users
 			}
-
+			regUsers.Users = users
 		}
 		regUsers.RWD.Unlock()
 	}
