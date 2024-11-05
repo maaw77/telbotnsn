@@ -24,12 +24,15 @@ type MessageToBot struct {
 }
 
 // formatHostZbx returns a list of hosts formatted as a string
-func formatHostZbx(svdHosts *brds.SavedHosts) (outHost string) {
+func formatHostZbx(svdHosts *brds.SavedHosts) (outHosts string) {
 	svdHosts.RWD.RLock()
-	for _, host := range svdHosts.Hosts {
-		outHost += fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v\n", host.NameZ, host.ProblemZ)
+	defer svdHosts.RWD.RUnlock()
+	if len(svdHosts.Hosts) < 1 {
+		return "There are no problematic hosts!"
 	}
-	svdHosts.RWD.RUnlock()
+	for _, host := range svdHosts.Hosts {
+		outHosts += fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v\n", host.NameZ, host.ProblemZ)
+	}
 	return
 }
 
@@ -47,7 +50,6 @@ func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, rgdUs
 					ParseMode: "HTML",
 				}
 			case "list":
-
 				mQ <- MessageToBot{
 					ChatId:    cmd.UserID,
 					Text:      formatHostZbx(svdHosts),

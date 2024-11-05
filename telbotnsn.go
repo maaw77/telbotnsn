@@ -39,13 +39,13 @@ func main() {
 		log.Println(regUsers.Users)
 		regUsers.RWD.RUnlock()
 
-		svdHosts := brds.SavedHosts{Hosts: map[string]zbx.ZabbixHost{}}
+		svdHosts := brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{}}
 		svdHosts.RWD.Lock()
-		svdHosts.Hosts["Host_1"] = zbx.ZabbixHost{HostidZ: "111",
+		svdHosts.Hosts["Host_1"] = brds.ZabbixHost{HostidZ: "111",
 			NameZ: "Host_1"}
-		svdHosts.Hosts["Host_2"] = zbx.ZabbixHost{HostidZ: "222",
+		svdHosts.Hosts["Host_2"] = brds.ZabbixHost{HostidZ: "222",
 			NameZ: "Host_2"}
-		svdHosts.Hosts["Host_3"] = zbx.ZabbixHost{HostidZ: "333",
+		svdHosts.Hosts["Host_3"] = brds.ZabbixHost{HostidZ: "333",
 			NameZ: "Host_3"}
 		svdHosts.RWD.Unlock()
 		// outZabbix := make(chan zbx.ZabbixHost)
@@ -54,12 +54,12 @@ func main() {
 
 		var waitGroup sync.WaitGroup
 
-		// waitGroup.Add(1)
-		// go func() {
-		// 	defer waitGroup.Done()
-		// 	zbx.Run(os.Getenv("ZABBIX_USERNAME"), os.Getenv("ZABBIX_PASSWORD"), outZabbix)
+		waitGroup.Add(1)
+		go func() {
+			defer waitGroup.Done()
+			zbx.Run(os.Getenv("ZABBIX_USERNAME"), os.Getenv("ZABBIX_PASSWORD"), &svdHosts)
 
-		// }()
+		}()
 
 		waitGroup.Add(1)
 		go func() {

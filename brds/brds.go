@@ -7,13 +7,19 @@ import (
 	"sync"
 
 	"github.com/redis/go-redis/v9"
-
-	"github.com/maaw77/telbotnsn/zbx"
 )
+
+type ZabbixHost struct {
+	HostidZ  string   `redis:"hostid"`
+	HostZ    string   `redis:"host"`
+	NameZ    string   `redis:"name"`
+	StatusZ  string   `redis:"status"`
+	ProblemZ []string `redis:"problem"`
+}
 
 type SavedHosts struct {
 	RWD   sync.RWMutex
-	Hosts map[string]zbx.ZabbixHost
+	Hosts map[string]ZabbixHost
 }
 
 type RegesteredUsers struct {
@@ -21,7 +27,7 @@ type RegesteredUsers struct {
 	Users map[string]User // Uesrs[User.Username]User
 }
 
-// User represents represents registered users.
+// User represents registered users.
 type User struct {
 	Id           int    `redis:"id"`
 	IsBot        bool   `redis:"is_bot"`

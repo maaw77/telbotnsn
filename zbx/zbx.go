@@ -8,21 +8,23 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/maaw77/telbotnsn/brds"
 )
 
 const zabbixUrlAPI = "http://zabbix.gmkzoloto.ru/zabbix/api_jsonrpc.php"
 
 // "*Микро*"
 
-const WILDCARD = "*Березо*"
+var WILDCARD = "*Березо*"
 
-type ZabbixHost struct {
-	HostidZ  string
-	HostZ    string
-	NameZ    string
-	StatusZ  string
-	ProblemZ []string
-}
+// type ZabbixHost struct {
+// 	HostidZ  string
+// 	HostZ    string
+// 	NameZ    string
+// 	StatusZ  string
+// 	ProblemZ []string
+// }
 
 type ZabbixClient struct {
 	Username string
@@ -138,20 +140,18 @@ func (c *ZabbixClient) GetHost(pattern string) ([]map[string]string, error) {
 //	GetTrigger retrieves triggered triggers for the specified hosts.
 //
 // It then sends information about the hosts over the specified channel (outZabbix).
-func (c *ZabbixClient) GetTrigger(hosts []map[string]string, outZabbix chan<- ZabbixHost) error {
-	var outHost ZabbixHost
+func (c *ZabbixClient) GetTrigger(hosts []map[string]string, svdZbxHosts *brds.SavedHosts) error {
+
 	if hosts == nil {
 		return errors.New("hosts is nil")
 
 	}
 
+	svdZbxHosts.RWD.Lock()
+	defer svdZbxHosts.RWD.Unlock()
+
+	svdZbxHosts.Hosts = map[string]brds.ZabbixHost{}
 	for _, hst := range hosts {
-		outHost = ZabbixHost{
-			HostidZ: hst["hostid"],
-			HostZ:   hst["host"],
-			NameZ:   hst["name"],
-			StatusZ: hst["status"],
-		}
 		payload := ZabbixRequest{Jsonrpc: "2.0",
 			Method: "trigger.get",
 
@@ -188,26 +188,29 @@ func (c *ZabbixClient) GetTrigger(hosts []map[string]string, outZabbix chan<- Za
 			return err
 		}
 		// fmt.Println(zr)
-
+		tempProblems := []string{}
 		for _, trgr := range zr.Result {
 			if trgr["value"] == "1" {
-				outHost.ProblemZ = append(outHost.ProblemZ, html.EscapeString(trgr["description"]))
+				tempProblems = append(tempProblems, html.EscapeString(trgr["description"]))
+				// svdZbxHosts.Hosts[hst["hostid"]].ProblemZ = append(svdZbxHosts.Hosts[hst["hostid"]].ProblemZ, html.EscapeString(trgr["description"]))
 			}
-
 		}
-		outZabbix <- outHost
-		// if len(outHost.ProblemZ) > 0 {
-		// 	// log.Println(outHost, "len=", len(outHost.ProblemZ))
-		// 	outZabbix <- outHost
-		// }
-
+		if len(tempProblems) > 0 {
+			svdZbxHosts.Hosts[hst["hostid"]] = brds.ZabbixHost{
+				HostidZ:  hst["hostid"],
+				HostZ:    hst["host"],
+				NameZ:    hst["name"],
+				StatusZ:  hst["status"],
+				ProblemZ: tempProblems,
+			}
+		}
 	}
 
 	return nil
 }
 
 // Run launches the Zabbix API client.
-func Run(username string, password string, outZabbix chan<- ZabbixHost) {
+func Run(username string, password string, svdZbxHosts *brds.SavedHosts) {
 	for {
 		client := ZabbixClient{Username: username, Password: password, URL: zabbixUrlAPI}
 
@@ -220,7 +223,7 @@ func Run(username string, password string, outZabbix chan<- ZabbixHost) {
 			log.Fatal(err)
 		}
 
-		if err := client.GetTrigger(hosts, outZabbix); err != nil {
+		if err := client.GetTrigger(hosts, svdZbxHosts); err != nil {
 			log.Fatal(err)
 		}
 
