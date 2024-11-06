@@ -51,27 +51,29 @@ func main() {
 		// outZabbix := make(chan zbx.ZabbixHost)
 		messageQueue := make(chan msgmngr.MessageToBot, 5)
 		commandQueueFromBot := make(chan msgmngr.CommandFromBot, 5)
+		commandQueueFromZbx := make(chan msgmngr.CommandFromZbx, 5)
 
 		var waitGroup sync.WaitGroup
 
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
-			zbx.Run(os.Getenv("ZABBIX_USERNAME"), os.Getenv("ZABBIX_PASSWORD"), &svdHosts)
+			zbx.Run(os.Getenv("ZABBIX_USERNAME"), os.Getenv("ZABBIX_PASSWORD"), commandQueueFromZbx, &svdHosts)
 
 		}()
 
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
-			msgmngr.MessageManager(messageQueue, commandQueueFromBot, &regUsers, &svdHosts)
+			msgmngr.MessageManager(messageQueue, commandQueueFromBot, commandQueueFromZbx, &regUsers, &svdHosts)
 
 		}()
 
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
-			bot.Run(os.Getenv("BOT_TOKEN"), messageQueue, commandQueueFromBot, &regUsers)
+			bot.Run(os.Getenv("BOT_TOKEN"), messageQueue, commandQueueFromBot,
+				&regUsers)
 		}()
 
 		waitGroup.Wait()

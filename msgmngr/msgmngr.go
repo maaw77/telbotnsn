@@ -3,18 +3,20 @@ package msgmngr
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/maaw77/telbotnsn/brds"
 	// "github.com/maaw77/telbotnsn/zbx"
 )
 
-// CommandFromBot is designed to store the data of commands transmitted by the bot to the message manager.
+// CommandFromBot represents an instance of a command from BOT to the message manager..
 type CommandFromBot struct {
 	UserID      int
 	TextCommand string
 	TextMessage string
 }
+
+// CommandFromZbx represents an instance of a command from ZBX to the message manager.
+type CommandFromZbx string
 
 // A MessageToBot is a message sent to the user.
 type MessageToBot struct {
@@ -33,11 +35,29 @@ func formatHostZbx(svdHosts *brds.SavedHosts) (outHosts string) {
 	for _, host := range svdHosts.Hosts {
 		outHosts += fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v\n", host.NameZ, host.ProblemZ)
 	}
+	outHosts += fmt.Sprintf("\n<b>The number of problematic hosts is %d.</b>", len(svdHosts.Hosts))
 	return
 }
 
+// sendMsgAllUsers sends messages to all registered users of the bot.
+func sendMsgAllUsers(text string, mQ chan<- MessageToBot, rgdUsers *brds.RegesteredUsers) {
+	rgdUsers.RWD.RLock()
+	defer rgdUsers.RWD.RUnlock()
+
+	for _, user := range rgdUsers.Users {
+		if user.Id != 0 {
+			mQ <- MessageToBot{
+				ChatId:    user.Id,
+				Text:      text,
+				ParseMode: "HTML",
+			}
+		}
+	}
+
+}
+
 // MessageManage controls the sending of messages to the Telegram
-func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, rgdUsers *brds.RegesteredUsers, svdHosts *brds.SavedHosts) {
+func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZbx <-chan CommandFromZbx, rgdUsers *brds.RegesteredUsers, svdHosts *brds.SavedHosts) {
 	for {
 		select {
 		case cmd := <-fromBot:
@@ -56,8 +76,9 @@ func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, rgdUs
 					ParseMode: "HTML",
 				}
 			}
-		case <-time.After(5 * time.Second):
-			log.Println("Default select!!")
+		case cmd := <-fromZbx:
+			log.Println(cmd)
+			go sendMsgAllUsers(string(cmd), mQ, rgdUsers)
 		}
 	}
 }

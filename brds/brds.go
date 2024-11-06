@@ -19,7 +19,7 @@ type ZabbixHost struct {
 
 type SavedHosts struct {
 	RWD   sync.RWMutex
-	Hosts map[string]ZabbixHost
+	Hosts map[string]ZabbixHost //Hosts[ZabbixHost.HostidZ]ZabbixHost
 }
 
 type RegesteredUsers struct {
