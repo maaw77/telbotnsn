@@ -8,50 +8,55 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
+
+	"github.com/maaw77/telbotnsn/brds"
+	"github.com/maaw77/telbotnsn/msgmngr"
 )
 
 const botUrlAPI string = "https://api.telegram.org/"
 
 // An User represents a Telegram user or bot.
 type User struct {
-	Id            int
-	Is_bot        bool
-	First_name    string
-	Last_name     string
-	Username      string
-	Language_code string
+	Id           int    `json:"id"`
+	IsBot        bool   `json:"is_bot"`
+	FirstName    string `json:"first_name"`
+	LastName     string `json:"last_name"`
+	Username     string `json:"username"`
+	LanguageCode string `json:"Language_code"`
 }
 
 // An ObjectMessage represents a message.
 type ObjectMessage struct {
-	Message_id int
-	From       User
-	Date       int
-	Text       string
+	MessageId int    `json:"message_id "`
+	From      User   `json:"from"`
+	Date      int    `json:"date"`
+	Text      string `json:"text"`
 }
 
 // A ResultIncomingUpdate is a field of incoming updates.
 type ResultIncomingUpdate struct {
-	Update_id int
-	Message   ObjectMessage
+	UpdateId int           `json:"update_id"`
+	Message  ObjectMessage `json:"message"`
 }
 
 // An IncomingUpdate represents an incoming updates.
 type IncomingUpdate struct {
-	Ok     bool
-	Result []ResultIncomingUpdate
+	Ok     bool                   `json:"ok"`
+	Result []ResultIncomingUpdate `json:"result"`
 }
 
-// A MessageToBot is a message sent to the user.
-type MessageToBot struct {
-	ChatId    int    `json:"chat_id"` // User or chat ID.
-	Text      string `json:"text"`    // The text of the message.
-	ParseMode string `json:"parse_mode,omitempty"`
-}
+// // A MessageToBot is a message sent to the user.
+// type MessageToBot struct {
+// 	ChatId    int    `json:"chat_id"` // User or chat ID.
+// 	Text      string `json:"text"`    // The text of the message.
+// 	ParseMode string `json:"parse_mode,omitempty"`
+// }
 
 // A ParamGetUpdates presents the parameters of the getUpdates method.
 type ParamGetUpdates struct {
 	Offset          int      `json:"offset"`
+	Timeout         int      `json:"timeout"`
 	Allowed_updates []string `json:"allowed_updates"`
 }
 
@@ -106,7 +111,7 @@ func (b *Bot) CheckAuth() error {
 }
 
 // SendMessage sends text message.
-func (b *Bot) SendMessage(msg *MessageToBot) error {
+func (b *Bot) SendMessage(msg *msgmngr.MessageToBot) error {
 
 	bJSON, err := json.Marshal(msg)
 	if err != nil {
@@ -126,22 +131,141 @@ func (b *Bot) SendMessage(msg *MessageToBot) error {
 	return nil
 }
 
+// getUpdates returns an incoming update from the bot
+func (b *Bot) GetUpdates(prmtrs ParamGetUpdates) (IncomingUpdate, error) {
+	var result IncomingUpdate
+	bJSON, err := json.Marshal(prmtrs)
+	if err != nil {
+		return result, err
+	}
+	resp, err := http.Post(b.urls.getUpdatesURL, "application/json", bytes.NewReader(bJSON))
+	if err != nil {
+		return result, err
+	}
+	defer resp.Body.Close()
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&result); err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
 // sengdMessages sends messages from the channel to users.
-func sendMessages(bot Bot, mQ <-chan MessageToBot) {
+func sendMessages(bot Bot, mQ <-chan msgmngr.MessageToBot) {
+	poolMaxSize := make(chan time.Time, 5)
 	for msg := range mQ {
-		go func(b Bot, m MessageToBot) {
+		poolMaxSize <- <-time.After(10 * time.Millisecond)
+		go func(b Bot, m msgmngr.MessageToBot) {
 
 			if err := bot.SendMessage(&m); err != nil {
 				log.Println(err)
-
 			}
+			<-poolMaxSize
 		}(bot, msg)
+
+	}
+}
+
+func poller(bot Bot, comandToMM chan<- msgmngr.CommandFromBot, regUsers *brds.RegesteredUsers) {
+	var lastIDUpdate int
+
+	client, ctx := brds.InitClient()
+
+	for {
+		results, err := bot.GetUpdates(ParamGetUpdates{Offset: lastIDUpdate + 1, Timeout: 3, Allowed_updates: []string{"message"}})
+
+		if err != nil {
+			log.Println(err)
+		} else {
+			for _, res := range results.Result {
+				if res.UpdateId > lastIDUpdate {
+					lastIDUpdate = res.UpdateId
+				}
+
+				switch res.Message.Text {
+				case "/start":
+					comandToMM <- msgmngr.CommandFromBot{
+						UserID:      res.Message.From.Id,
+						TextMessage: "Command is 'start'",
+						TextCommand: "print",
+					}
+					if err := brds.UpdateRegUsers(client, ctx, regUsers); err != nil {
+						log.Println(err)
+					} else {
+						regUsers.RWD.RLock()
+						_, ok := regUsers.Users[res.Message.From.Username]
+						regUsers.RWD.RUnlock()
+						if ok {
+							comandToMM <- msgmngr.CommandFromBot{
+								UserID:      res.Message.From.Id,
+								TextMessage: "<i>You are authenticated!</i>",
+								TextCommand: "print",
+							}
+
+							regUsers.RWD.Lock()
+							regUsers.Users[res.Message.From.Username] = brds.User{Id: res.Message.From.Id,
+								IsBot:        res.Message.From.IsBot,
+								FirstName:    res.Message.From.FirstName,
+								LastName:     res.Message.From.LastName,
+								Username:     res.Message.From.Username,
+								LanguageCode: res.Message.From.LanguageCode,
+							}
+							regUsers.RWD.Unlock()
+
+							if err := brds.SaveRegUsers(client, ctx, regUsers); err != nil {
+								log.Println(err)
+							}
+
+						} else {
+							comandToMM <- msgmngr.CommandFromBot{
+								UserID:      res.Message.From.Id,
+								TextMessage: "<i>You are not registered!</i>",
+								TextCommand: "print",
+							}
+
+						}
+					}
+				case "/list":
+					regUsers.RWD.RLock()
+					userBot, ok := regUsers.Users[res.Message.From.Username]
+					regUsers.RWD.RUnlock()
+					if !ok || userBot.Id != res.Message.From.Id {
+						comandToMM <- msgmngr.CommandFromBot{
+							UserID:      res.Message.From.Id,
+							TextMessage: "<i>You aren't authenticated!\nUse the '/start' command.</i>",
+							TextCommand: "print",
+						}
+
+					} else {
+						comandToMM <- msgmngr.CommandFromBot{
+							UserID:      res.Message.From.Id,
+							TextCommand: "list",
+						}
+					}
+				case "/help":
+					comandToMM <- msgmngr.CommandFromBot{
+						UserID:      res.Message.From.Id,
+						TextMessage: "<i>Use the following commands: /help | /start | /list.</i>",
+						TextCommand: "print",
+					}
+
+				default:
+					comandToMM <- msgmngr.CommandFromBot{
+						UserID:      res.Message.From.Id,
+						TextMessage: "<i>Unknow command.\nUse the '/help' command.</i>",
+						TextCommand: "print",
+					}
+
+				}
+			}
+		}
 	}
 }
 
 // botRun launches the bot.
-func Run(botToken string, mQ <-chan MessageToBot) {
-	bot := &Bot{botToken: botToken}
+func Run(botToken string, mQ chan msgmngr.MessageToBot, comandToMM chan<- msgmngr.CommandFromBot, rgdUsers *brds.RegesteredUsers) {
+	bot := Bot{botToken: botToken}
 	bot.SetURLs(botUrlAPI)
 
 	if err := bot.CheckAuth(); err != nil {
@@ -153,103 +277,15 @@ func Run(botToken string, mQ <-chan MessageToBot) {
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(1)
 	go func() {
-		waitGroup.Done()
-		sendMessages(*bot, mQ)
+		defer waitGroup.Done()
+		sendMessages(bot, mQ)
+	}()
+	// ParamGetUpdates{Offset: -1, Allowed_updates: []string{"message"}}
+	waitGroup.Add(1)
+	go func() {
+		defer waitGroup.Done()
+		poller(bot, comandToMM, rgdUsers)
 	}()
 	waitGroup.Wait()
 
 }
-
-// var urls botUrls
-// urls.setURls(botToken, botUrlAPI)
-
-// client := &http.Client{}
-
-// if err := botCheckAuth(client, &urls); err != nil {
-// 	log.Fatal(err)
-// }
-
-// // var lastUpdate ResultIncomingUpdate
-// upd := botGetUpdates(client, &urls, &ParamGetUpdates{Offset: -1, Allowed_updates: []string{"message"}})
-// var lastUpdate ResultIncomingUpdate
-// if len(upd.Result) != 0 {
-// 	lastUpdate = upd.Result[len(upd.Result)-1]
-// }
-// for {
-// 	lastUpdate = Poller(client, &urls, &ParamGetUpdates{Offset: -1, Allowed_updates: []string{"message"}}, users, &lastUpdate)
-// 	log.Println(users)
-
-// 	// for _, val := range users {
-// 	// 	msg := MessageToBot{
-// 	// 		ChatId: val,
-// 	// 		Text:   "Hello!",
-// 	// 	}
-// 	// 	if err := botSendMessage(client, &urls, &msg); err != nil {
-// 	// 		log.Println(err)
-// 	// 	}
-// 	// }
-// }
-// func botGetUpdates(client *http.Client, urls *botUrls, param *ParamGetUpdates) *IncomingUpdate {
-// 	b, err := json.Marshal(param)
-// 	if err != nil {
-// 		// return err
-// 	}
-// 	// fmt.Println(string(b))
-// 	resp, err := client.Post(urls.getUpdatesURL, "application/json", bytes.NewReader(b))
-// 	if err != nil {
-// 		// return err
-// 	}
-
-// 	if resp.StatusCode != http.StatusOK {
-// 		// return errors.New(resp.Status)
-// 	}
-
-// 	defer resp.Body.Close()
-
-// 	var upd IncomingUpdate
-// 	dec := json.NewDecoder(resp.Body)
-// 	if err := dec.Decode(&upd); err != nil {
-// 		log.Println(err)
-
-// 	}
-
-// 	return &upd
-
-// }
-
-// func Poller(client *http.Client, urls *botUrls, param *ParamGetUpdates, users map[string]int, lastUpdate *ResultIncomingUpdate) ResultIncomingUpdate {
-// 	upd := botGetUpdates(client, urls, param)
-// 	// log.Printf("%s\n", pretty.Sprint(&upd))
-
-// 	indexResult := len(upd.Result) - 1
-// 	if indexResult > 0 {
-
-// 		if lastUpdate.Update_id != upd.Result[indexResult].Update_id {
-// 			userName := upd.Result[indexResult].Message.From.Username
-// 			cmd := upd.Result[indexResult].Message.Text
-
-// 			if _, ok := users[userName]; cmd == "/start" && ok {
-// 				users[userName] = upd.Result[indexResult].Message.From.Id
-
-// 				msg := MessageToBot{
-// 					ChatId: users[userName],
-// 					Text:   "You have been authenticated!\n Welcome!",
-// 				}
-// 				if err := botSendMessage(client, urls, &msg); err != nil {
-// 					log.Println(err)
-// 				}
-
-// 			} else if cmd == "/start" {
-// 				msg := MessageToBot{
-// 					ChatId: upd.Result[indexResult].Message.From.Id,
-// 					Text:   "You are not authenticated!",
-// 				}
-// 				if err := botSendMessage(client, urls, &msg); err != nil {
-// 					log.Println(err)
-// 				}
-// 			}
-// 		}
-// 		return upd.Result[indexResult]
-// 	}
-// 	return ResultIncomingUpdate{}
-// }
