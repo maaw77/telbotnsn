@@ -12,6 +12,7 @@ import (
 	"github.com/maaw77/telbotnsn/zbx"
 )
 
+// home
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
