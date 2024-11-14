@@ -14,7 +14,6 @@ import (
 	"github.com/maaw77/telbotnsn/zbx"
 )
 
-// home
 func main() {
 
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
@@ -42,13 +41,16 @@ func main() {
 
 		svdHosts := brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{}}
 		svdHosts.RWD.Lock()
-		svdHosts.Hosts["Host_1"] = brds.ZabbixHost{HostidZ: "111",
+		svdHosts.Hosts["Host_1"] = brds.ZabbixHost{HostIdZ: "111",
 			NameZ: "Host_1"}
-		svdHosts.Hosts["Host_2"] = brds.ZabbixHost{HostidZ: "222",
+		svdHosts.Hosts["Host_2"] = brds.ZabbixHost{HostIdZ: "222",
 			NameZ: "Host_2"}
-		svdHosts.Hosts["Host_3"] = brds.ZabbixHost{HostidZ: "333",
+		svdHosts.Hosts["Host_3"] = brds.ZabbixHost{HostIdZ: "333",
 			NameZ: "Host_3"}
 		svdHosts.RWD.Unlock()
+
+		fixHosts := brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{}}
+
 		// outZabbix := make(chan zbx.ZabbixHost)
 		messageQueue := make(chan msgmngr.MessageToBot, 5)
 		commandQueueFromBot := make(chan msgmngr.CommandFromBot, 5)
@@ -59,7 +61,7 @@ func main() {
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
-			zbx.Run(os.Getenv("ZABBIX_USERNAME"), os.Getenv("ZABBIX_PASSWORD"), commandQueueFromZbx, &svdHosts)
+			zbx.Run(os.Getenv("ZABBIX_USERNAME"), os.Getenv("ZABBIX_PASSWORD"), commandQueueFromZbx, &svdHosts, &fixHosts)
 
 		}()
 
@@ -73,8 +75,7 @@ func main() {
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
-			bot.Run(os.Getenv("BOT_TOKEN"), messageQueue, commandQueueFromBot,
-				&regUsers)
+			bot.Run(os.Getenv("BOT_TOKEN"), messageQueue, commandQueueFromBot, &regUsers)
 		}()
 
 		waitGroup.Wait()

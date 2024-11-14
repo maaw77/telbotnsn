@@ -196,12 +196,11 @@ func (c *ZabbixClient) GetTrigger(hosts []map[string]string, svdZbxHosts *brds.S
 		for _, trgr := range zr.Result {
 			if trgr["value"] == "1" {
 				tempProblems = append(tempProblems, html.EscapeString(trgr["description"]))
-				// svdZbxHosts.Hosts[hst["hostid"]].ProblemZ = append(svdZbxHosts.Hosts[hst["hostid"]].ProblemZ, html.EscapeString(trgr["description"]))
 			}
 		}
 		if len(tempProblems) > 0 {
 			svdZbxHosts.Hosts[hst["hostid"]] = brds.ZabbixHost{
-				HostidZ:  hst["hostid"],
+				HostIdZ:  hst["hostid"],
 				HostZ:    hst["host"],
 				NameZ:    hst["name"],
 				StatusZ:  hst["status"],
@@ -214,32 +213,65 @@ func (c *ZabbixClient) GetTrigger(hosts []map[string]string, svdZbxHosts *brds.S
 }
 
 // compareHosts
-func compareHosts(lastHost map[string]brds.ZabbixHost, currentHosts *brds.SavedHosts, comandToMM chan<- msgmngr.CommandFromZbx) {
-	currentHosts.RWD.RLock()
-	defer currentHosts.RWD.RUnlock()
-
-	infoForUsers := fmt.Sprintf("<b>The number of problematic hosts is %d.</b>", len(currentHosts.Hosts))
-
-	if len(currentHosts.Hosts) != len(lastHost) {
-		comandToMM <- msgmngr.CommandFromZbx(infoForUsers)
-		return
+func compareHosts(lastHosts, fixHosts, currentHosts *brds.SavedHosts, comandToMM chan<- msgmngr.CommandFromZbx) error {
+	if lastHosts == nil || fixHosts == nil || currentHosts == nil || comandToMM == nil {
+		return errors.New("the input data is nil")
 	}
-	for k, v := range lastHost {
+
+	currentHosts.RWD.Lock()
+	defer currentHosts.RWD.Unlock()
+
+	fixHosts.RWD.Lock()
+	defer fixHosts.RWD.Unlock()
+	fixHosts.Hosts = map[string]brds.ZabbixHost{}
+
+	lastHosts.RWD.RLock()
+	defer lastHosts.RWD.RUnlock()
+
+	if currentHosts.Hosts == nil || fixHosts.Hosts == nil || lastHosts.Hosts == nil {
+		return errors.New("hosts are nil")
+	}
+
+	var flagСhange bool
+
+	for k, v := range lastHosts.Hosts {
 		_, ok := currentHosts.Hosts[k]
 		if !ok {
-			comandToMM <- msgmngr.CommandFromZbx(infoForUsers)
-			return
-		}
-		if slices.Compare(v.ProblemZ, currentHosts.Hosts[k].ProblemZ) != 0 {
-			comandToMM <- msgmngr.CommandFromZbx(infoForUsers)
-			return
+			fixHosts.Hosts[k] = v
+			flagСhange = true
 		}
 	}
+
+	for kc, vc := range currentHosts.Hosts {
+		vl, ok := lastHosts.Hosts[kc]
+		if !ok {
+			currentHosts.Hosts[kc] = brds.ZabbixHost{HostIdZ: vc.HostIdZ,
+				HostZ:    vc.HostZ,
+				NameZ:    vc.NameZ,
+				ProblemZ: vc.ProblemZ,
+				ItNew:    true}
+			flagСhange = true
+		} else if slices.Compare(vc.ProblemZ, vl.ProblemZ) != 0 {
+			currentHosts.Hosts[kc] = brds.ZabbixHost{HostIdZ: vc.HostIdZ,
+				HostZ:     vc.HostZ,
+				NameZ:     vc.NameZ,
+				ProblemZ:  vc.ProblemZ,
+				ItChanged: true}
+			flagСhange = true
+		}
+	}
+
+	infoForUsers := fmt.Sprintf("<b>The number of problematic hosts is %d.</b>\n<b>The number of fixed hosts is %d.</b>", len(currentHosts.Hosts), len(fixHosts.Hosts))
+	if flagСhange {
+		comandToMM <- msgmngr.CommandFromZbx{TextMessage: infoForUsers}
+	}
+	return nil
 }
 
 // Run launches the Zabbix API client.
-func Run(username string, password string, comandToMM chan<- msgmngr.CommandFromZbx, svdZbxHosts *brds.SavedHosts) {
-	var lastHost map[string]brds.ZabbixHost
+func Run(username string, password string, comandToMM chan<- msgmngr.CommandFromZbx, prblmZbxHosts, fixHost *brds.SavedHosts) {
+	lastHost := &brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{}}
+
 	for {
 		client := ZabbixClient{Username: username, Password: password, URL: zabbixUrlAPI}
 
@@ -251,16 +283,22 @@ func Run(username string, password string, comandToMM chan<- msgmngr.CommandFrom
 		if err != nil {
 			log.Fatal(err)
 		}
-		svdZbxHosts.RWD.RLock()
-		lastHost = svdZbxHosts.Hosts
-		svdZbxHosts.RWD.RUnlock()
 
-		if err := client.GetTrigger(hosts, svdZbxHosts); err != nil {
+		prblmZbxHosts.RWD.RLock()
+		lastHost.RWD.Lock()
+		lastHost.Hosts = prblmZbxHosts.Hosts
+		prblmZbxHosts.RWD.RUnlock()
+		lastHost.RWD.Unlock()
+
+		if err := client.GetTrigger(hosts, prblmZbxHosts); err != nil {
 			log.Fatal(err)
 		}
 
-		go compareHosts(lastHost, svdZbxHosts, comandToMM)
-
+		go func() {
+			if err := compareHosts(lastHost, fixHost, prblmZbxHosts, comandToMM); err != nil {
+				log.Fatal(err)
+			}
+		}()
 		time.Sleep(3 * time.Minute)
 		log.Println("zbx is awake")
 
