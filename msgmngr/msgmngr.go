@@ -67,6 +67,24 @@ func formatProblemHostZbx(prblmHost *brds.SavedHosts) (outHosts string, err erro
 	return
 }
 
+// ormatRestoredHostZbx returns a list of restored hosts formatted as a string
+func formatRestoredHostZbx(rstrdHost *brds.SavedHosts) (outHosts string, err error) {
+
+	if rstrdHost == nil || rstrdHost.Hosts == nil {
+		return outHosts, errors.New("input data is nil")
+	}
+
+	rstrdHost.RWD.RLock()
+	defer rstrdHost.RWD.RUnlock()
+
+	for _, host := range rstrdHost.Hosts {
+		outHosts += fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v\n", host.NameZ, host.ProblemZ)
+	}
+
+	outHosts += fmt.Sprintf("\n<b>The number of restored hosts is %d.</b>", len(rstrdHost.Hosts))
+	return
+}
+
 // sendMsgAllUsers sends messages to all registered users of the bot.
 func sendMsgAllUsers(text string, mQ chan<- MessageToBot, rgdUsers *brds.RegesteredUsers) {
 	rgdUsers.RWD.RLock()
