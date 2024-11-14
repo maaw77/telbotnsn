@@ -261,6 +261,7 @@ func Run(username string, password string, comandToMM chan<- msgmngr.CommandFrom
 
 		go compareHosts(lastHost, svdZbxHosts, comandToMM)
 
+		log.Println("zbx is in sleep mode")
 		time.Sleep(3 * time.Minute)
 		log.Println("zbx is awake")
 

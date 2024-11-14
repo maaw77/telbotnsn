@@ -16,7 +16,7 @@ type CommandFromBot struct {
 }
 
 // CommandFromZbx represents an instance of a command from ZBX to the message manager.
-type CommandFromZbx string
+type CommandFromZbx string //???? Fix it as users CommandFromBot
 
 // A MessageToBot is a message sent to the user.
 type MessageToBot struct {
