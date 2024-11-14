@@ -1,6 +1,7 @@
 package msgmngr
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
@@ -16,7 +17,11 @@ type CommandFromBot struct {
 }
 
 // CommandFromZbx represents an instance of a command from ZBX to the message manager.
-type CommandFromZbx string //???? Fix it as users CommandFromBot
+
+type CommandFromZbx struct {
+	TextCommand string
+	TextMessage string
+}
 
 // A MessageToBot is a message sent to the user.
 type MessageToBot struct {
@@ -39,6 +44,48 @@ func formatHostZbx(svdHosts *brds.SavedHosts) (outHosts string) {
 	return
 }
 
+// formatProblemHostZbx returns a list of problematic hosts formatted as a string
+func formatProblemHostZbx(prblmHost *brds.SavedHosts) (outHosts string, err error) {
+
+	if prblmHost == nil || prblmHost.Hosts == nil {
+		return outHosts, errors.New("input data is nil")
+	}
+
+	prblmHost.RWD.RLock()
+	defer prblmHost.RWD.RUnlock()
+
+	for _, host := range prblmHost.Hosts {
+		marker := ""
+		if host.ItChanged {
+			marker = "ch_"
+		} else if host.ItNew {
+			marker = "new_"
+		}
+		outHosts += fmt.Sprintf("<b>%sHost name:</b> %s, <b>problems:</b>%v\n", marker, host.NameZ, host.ProblemZ)
+	}
+
+	outHosts += fmt.Sprintf("\n<b>The number of problematic hosts is %d.</b>", len(prblmHost.Hosts))
+	return
+}
+
+// ormatRestoredHostZbx returns a list of restored hosts formatted as a string
+func formatRestoredHostZbx(rstrdHost *brds.SavedHosts) (outHosts string, err error) {
+
+	if rstrdHost == nil || rstrdHost.Hosts == nil {
+		return outHosts, errors.New("input data is nil")
+	}
+
+	rstrdHost.RWD.RLock()
+	defer rstrdHost.RWD.RUnlock()
+
+	for _, host := range rstrdHost.Hosts {
+		outHosts += fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v\n", host.NameZ, host.ProblemZ)
+	}
+
+	outHosts += fmt.Sprintf("\n<b>The number of restored hosts is %d.</b>", len(rstrdHost.Hosts))
+	return
+}
+
 // sendMsgAllUsers sends messages to all registered users of the bot.
 func sendMsgAllUsers(text string, mQ chan<- MessageToBot, rgdUsers *brds.RegesteredUsers) {
 	rgdUsers.RWD.RLock()
@@ -57,7 +104,7 @@ func sendMsgAllUsers(text string, mQ chan<- MessageToBot, rgdUsers *brds.Regeste
 }
 
 // MessageManage controls the sending of messages to the Telegram
-func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZbx <-chan CommandFromZbx, rgdUsers *brds.RegesteredUsers, svdHosts *brds.SavedHosts) {
+func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZbx <-chan CommandFromZbx, rgdUsers *brds.RegesteredUsers, prblmHosts *brds.SavedHosts) {
 	for {
 		select {
 		case cmd := <-fromBot:
@@ -72,13 +119,13 @@ func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZ
 			case "list":
 				mQ <- MessageToBot{
 					ChatId:    cmd.UserID,
-					Text:      formatHostZbx(svdHosts),
+					Text:      formatHostZbx(prblmHosts),
 					ParseMode: "HTML",
 				}
 			}
 		case cmd := <-fromZbx:
 			log.Println(cmd)
-			go sendMsgAllUsers(string(cmd), mQ, rgdUsers)
+			go sendMsgAllUsers(string(cmd.TextCommand), mQ, rgdUsers)
 		}
 	}
 }

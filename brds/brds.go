@@ -10,16 +10,19 @@ import (
 )
 
 type ZabbixHost struct {
-	HostidZ  string   `redis:"hostid"`
-	HostZ    string   `redis:"host"`
-	NameZ    string   `redis:"name"`
-	StatusZ  string   `redis:"status"`
-	ProblemZ []string `redis:"problem"`
+	HostIdZ   string   `redis:"hostid"`
+	HostZ     string   `redis:"host"`
+	NameZ     string   `redis:"name"`
+	StatusZ   string   `redis:"status"`
+	ProblemZ  []string `redis:"problem"`
+	ItNew     bool
+	ItChanged bool
 }
 
 type SavedHosts struct {
 	RWD   sync.RWMutex
 	Hosts map[string]ZabbixHost //Hosts[ZabbixHost.HostidZ]ZabbixHost
+
 }
 
 type RegesteredUsers struct {
