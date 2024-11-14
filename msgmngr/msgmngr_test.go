@@ -146,8 +146,7 @@ func TestFormatRestoredHostZbxEmpty(t *testing.T) {
 	}
 }
 
-//	msgmngr.TestFormatRestoredHostZbx calls msgmngr.formatProblemHostZbx with
-//
+// TestFormatRestoredHostZbx calls msgmngr.formatProblemHostZbx with
 // various arguments, checking the correctness of the output string.
 func TestFormatRestoredHostZbx(t *testing.T) {
 	currentHosts := &brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{"1": {HostIdZ: "1",
@@ -199,6 +198,7 @@ func TestFormatRestoredHostZbx(t *testing.T) {
 	}
 
 	for i := 1; i <= len(currentHosts.Hosts); i++ {
+
 		want = regexp.MustCompile(`<b>Host name:</b> name_host_` + strconv.Itoa(i))
 		if len(want.FindAllString(outString, -1)) != 1 {
 			t.Errorf(`The string "<b>Host name:<b> name_host_%s" was not found`, strconv.Itoa(i))
