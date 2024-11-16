@@ -25,7 +25,7 @@ func main() {
 	argumentsCLI := os.Args
 
 	if len(argumentsCLI) < 2 {
-		fmt.Println("Usage: run|users <arguments>")
+		fmt.Printf("Usage: %s run|users <arguments>", os.Args[0])
 		return
 	}
 	switch argumentsCLI[1] {
@@ -49,7 +49,7 @@ func main() {
 			NameZ: "Host_3"}
 		svdHosts.RWD.Unlock()
 
-		fixHosts := brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{}}
+		rstrdHosts := brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{}}
 
 		// outZabbix := make(chan zbx.ZabbixHost)
 		messageQueue := make(chan msgmngr.MessageToBot, 5)
@@ -61,14 +61,14 @@ func main() {
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
-			zbx.Run(os.Getenv("ZABBIX_USERNAME"), os.Getenv("ZABBIX_PASSWORD"), commandQueueFromZbx, &svdHosts, &fixHosts)
+			zbx.Run(os.Getenv("ZABBIX_USERNAME"), os.Getenv("ZABBIX_PASSWORD"), commandQueueFromZbx, &svdHosts, &rstrdHosts)
 
 		}()
 
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
-			msgmngr.MessageManager(messageQueue, commandQueueFromBot, commandQueueFromZbx, &regUsers, &svdHosts)
+			msgmngr.MessageManager(messageQueue, commandQueueFromBot, commandQueueFromZbx, &regUsers, &svdHosts, &rstrdHosts)
 
 		}()
 
@@ -81,8 +81,8 @@ func main() {
 		waitGroup.Wait()
 	case "users":
 		if len(argumentsCLI) < 3 {
-			fmt.Println("Usage: users -add|-del <username1> <username2>")
-			fmt.Println("Usage: users -list")
+			fmt.Printf("Usage: %s users -add|-del <username1> <username2>", os.Args[0])
+			fmt.Printf("Usage: %s users -list", os.Args[0])
 			return
 		}
 
@@ -103,7 +103,7 @@ func main() {
 
 		case "-add":
 			if len(argumentsCLI) < 4 {
-				fmt.Println("Usage: users -add|-del <username1> <username2> ...")
+				fmt.Printf("Usage: %s users -add|-del <username1> <username2> ...", os.Args[0])
 				return
 			}
 			// fmt.Println(argumentsCLI[2:])
@@ -113,7 +113,7 @@ func main() {
 			fmt.Println(argumentsCLI[3:], "has been registered.")
 		case "-del":
 			if len(argumentsCLI) < 4 {
-				fmt.Println("Usage: users -add|-del <username1> <username2> ...")
+				fmt.Printf("Usage: %s users -add|-del <username1> <username2> ...", os.Args[0])
 				return
 			}
 			countDelUsers, err := brds.DelUsers(client, ctx, argumentsCLI[3:])

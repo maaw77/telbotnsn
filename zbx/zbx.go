@@ -213,31 +213,34 @@ func (c *ZabbixClient) GetTrigger(hosts []map[string]string, svdZbxHosts *brds.S
 }
 
 // compareHosts
-func compareHosts(lastHosts, fixHosts, currentHosts *brds.SavedHosts, comandToMM chan<- msgmngr.CommandFromZbx) error {
-	if lastHosts == nil || fixHosts == nil || currentHosts == nil || comandToMM == nil {
+func compareHosts(lastHosts, rstrdHosts, currentHosts *brds.SavedHosts, comandToMM chan<- msgmngr.CommandFromZbx) error {
+	if lastHosts == nil || rstrdHosts == nil || currentHosts == nil || comandToMM == nil {
 		return errors.New("the input data is nil")
 	}
 
 	currentHosts.RWD.Lock()
 	defer currentHosts.RWD.Unlock()
 
-	fixHosts.RWD.Lock()
-	defer fixHosts.RWD.Unlock()
-	fixHosts.Hosts = map[string]brds.ZabbixHost{}
+	rstrdHosts.RWD.Lock()
+	defer rstrdHosts.RWD.Unlock()
 
 	lastHosts.RWD.RLock()
 	defer lastHosts.RWD.RUnlock()
 
-	if currentHosts.Hosts == nil || fixHosts.Hosts == nil || lastHosts.Hosts == nil {
+	if currentHosts.Hosts == nil || rstrdHosts.Hosts == nil || lastHosts.Hosts == nil {
 		return errors.New("hosts are nil")
 	}
 
-	var flagСhange bool
+	var flagСhange, flagRestore bool
 
 	for k, v := range lastHosts.Hosts {
 		_, ok := currentHosts.Hosts[k]
 		if !ok {
-			fixHosts.Hosts[k] = v
+			if !flagRestore {
+				rstrdHosts.Hosts = map[string]brds.ZabbixHost{}
+				flagRestore = true
+			}
+			rstrdHosts.Hosts[k] = v
 			flagСhange = true
 		}
 	}
@@ -261,15 +264,19 @@ func compareHosts(lastHosts, fixHosts, currentHosts *brds.SavedHosts, comandToMM
 		}
 	}
 
-	infoForUsers := fmt.Sprintf("<b>The number of problematic hosts is %d.</b>\n<b>The number of fixed hosts is %d.</b>", len(currentHosts.Hosts), len(fixHosts.Hosts))
+	if !flagRestore && flagСhange {
+		rstrdHosts.Hosts = map[string]brds.ZabbixHost{}
+	}
+	infoForUsers := fmt.Sprintf("The number of problematic hosts is <b>%d</b>.\nThe number of restored hosts is <b>%d</b>.", len(currentHosts.Hosts), len(rstrdHosts.Hosts))
 	if flagСhange {
+
 		comandToMM <- msgmngr.CommandFromZbx{TextMessage: infoForUsers}
 	}
 	return nil
 }
 
 // Run launches the Zabbix API client.
-func Run(username string, password string, comandToMM chan<- msgmngr.CommandFromZbx, prblmZbxHosts, fixHost *brds.SavedHosts) {
+func Run(username string, password string, comandToMM chan<- msgmngr.CommandFromZbx, prblmZbxHosts, rstrdHost *brds.SavedHosts) {
 	lastHost := &brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{}}
 
 	for {
@@ -295,7 +302,7 @@ func Run(username string, password string, comandToMM chan<- msgmngr.CommandFrom
 		}
 
 		go func() {
-			if err := compareHosts(lastHost, fixHost, prblmZbxHosts, comandToMM); err != nil {
+			if err := compareHosts(lastHost, rstrdHost, prblmZbxHosts, comandToMM); err != nil {
 				log.Fatal(err)
 			}
 		}()

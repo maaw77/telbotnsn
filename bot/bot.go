@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -122,8 +123,8 @@ func (b *Bot) SendMessage(msg *msgmngr.MessageToBot) error {
 	if err != nil {
 		return err
 	}
-	// tx, _ := io.ReadAll(resp.Body)
-	// log.Println(string(tx))
+	tx, _ := io.ReadAll(resp.Body)
+	log.Println(string(tx))
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return errors.New(resp.Status)
@@ -226,7 +227,7 @@ func poller(bot Bot, comandToMM chan<- msgmngr.CommandFromBot, regUsers *brds.Re
 
 						}
 					}
-				case "/list":
+				case "/listp":
 					regUsers.RWD.RLock()
 					userBot, ok := regUsers.Users[res.Message.From.Username]
 					regUsers.RWD.RUnlock()
@@ -240,13 +241,30 @@ func poller(bot Bot, comandToMM chan<- msgmngr.CommandFromBot, regUsers *brds.Re
 					} else {
 						comandToMM <- msgmngr.CommandFromBot{
 							UserID:      res.Message.From.Id,
-							TextCommand: "list",
+							TextCommand: "listp",
+						}
+					}
+				case "/listr":
+					regUsers.RWD.RLock()
+					userBot, ok := regUsers.Users[res.Message.From.Username]
+					regUsers.RWD.RUnlock()
+					if !ok || userBot.Id != res.Message.From.Id {
+						comandToMM <- msgmngr.CommandFromBot{
+							UserID:      res.Message.From.Id,
+							TextMessage: "<i>You aren't authenticated!\nUse the '/start' command.</i>",
+							TextCommand: "print",
+						}
+
+					} else {
+						comandToMM <- msgmngr.CommandFromBot{
+							UserID:      res.Message.From.Id,
+							TextCommand: "listr",
 						}
 					}
 				case "/help":
 					comandToMM <- msgmngr.CommandFromBot{
 						UserID:      res.Message.From.Id,
-						TextMessage: "<i>Use the following commands: /help | /start | /list.</i>",
+						TextMessage: "<i>Use the following commands: /help | /start | /listp | /lisr.</i>",
 						TextCommand: "print",
 					}
 

@@ -31,18 +31,18 @@ type MessageToBot struct {
 }
 
 // formatHostZbx returns a list of hosts formatted as a string
-func formatHostZbx(svdHosts *brds.SavedHosts) (outHosts string) {
-	svdHosts.RWD.RLock()
-	defer svdHosts.RWD.RUnlock()
-	if len(svdHosts.Hosts) < 1 {
-		return "There are no problematic hosts!"
-	}
-	for _, host := range svdHosts.Hosts {
-		outHosts += fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v\n", host.NameZ, host.ProblemZ)
-	}
-	outHosts += fmt.Sprintf("\n<b>The number of problematic hosts is %d.</b>", len(svdHosts.Hosts))
-	return
-}
+// func formatHostZbx(svdHosts *brds.SavedHosts) (outHosts string) {
+// 	svdHosts.RWD.RLock()
+// 	defer svdHosts.RWD.RUnlock()
+// 	if len(svdHosts.Hosts) < 1 {
+// 		return "There are no problematic hosts!"
+// 	}
+// 	for _, host := range svdHosts.Hosts {
+// 		outHosts += fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v\n", host.NameZ, host.ProblemZ)
+// 	}
+// 	outHosts += fmt.Sprintf("\n<b>The number of problematic hosts is %d.</b>", len(svdHosts.Hosts))
+// 	return
+// }
 
 // formatProblemHostZbx returns a list of problematic hosts formatted as a string
 func formatProblemHostZbx(prblmHost *brds.SavedHosts) (outHosts string, err error) {
@@ -104,7 +104,8 @@ func sendMsgAllUsers(text string, mQ chan<- MessageToBot, rgdUsers *brds.Regeste
 }
 
 // MessageManage controls the sending of messages to the Telegram
-func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZbx <-chan CommandFromZbx, rgdUsers *brds.RegesteredUsers, prblmHosts *brds.SavedHosts) {
+func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZbx <-chan CommandFromZbx,
+	rgdUsers *brds.RegesteredUsers, prblmHosts, rstrdHosts *brds.SavedHosts) {
 	for {
 		select {
 		case cmd := <-fromBot:
@@ -116,16 +117,25 @@ func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZ
 					Text:      cmd.TextMessage,
 					ParseMode: "HTML",
 				}
-			case "list":
+			case "listp":
+				outSring, _ := formatProblemHostZbx(prblmHosts)
+				log.Println(outSring)
 				mQ <- MessageToBot{
 					ChatId:    cmd.UserID,
-					Text:      formatHostZbx(prblmHosts),
+					Text:      outSring,
+					ParseMode: "HTML",
+				}
+			case "listr":
+				outSring, _ := formatRestoredHostZbx(rstrdHosts)
+				mQ <- MessageToBot{
+					ChatId:    cmd.UserID,
+					Text:      outSring,
 					ParseMode: "HTML",
 				}
 			}
 		case cmd := <-fromZbx:
 			log.Println(cmd)
-			go sendMsgAllUsers(string(cmd.TextCommand), mQ, rgdUsers)
+			go sendMsgAllUsers(cmd.TextMessage, mQ, rgdUsers)
 		}
 	}
 }
