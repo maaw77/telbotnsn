@@ -11,7 +11,9 @@ import (
 
 // CommandFromBot represents an instance of a command from BOT to the message manager..
 type CommandFromBot struct {
-	UserID      int
+	User brds.User
+	// UserID      int
+	// Username    string
 	TextCommand string
 	TextMessage string
 }
@@ -105,37 +107,129 @@ func sendMsgAllUsers(text string, mQ chan<- MessageToBot, rgdUsers *brds.Regeste
 
 // MessageManage controls the sending of messages to the Telegram
 func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZbx <-chan CommandFromZbx,
-	rgdUsers *brds.RegesteredUsers, prblmHosts, rstrdHosts *brds.SavedHosts) {
+	regUsers *brds.RegesteredUsers, prblmHosts, rstrdHosts *brds.SavedHosts) {
+
+	client, ctx := brds.InitClient()
+
 	for {
 		select {
 		case cmd := <-fromBot:
 			switch cmd.TextCommand {
-			case "print":
+			case "/start":
+
+				// mQ <- MessageToBot{
+				// 	ChatId:    cmd.UserID,
+				// 	Text:      "START",
+				// 	ParseMode: "HTML",
+				// }
+
+				if err := brds.UpdateRegUsers(client, ctx, regUsers); err != nil {
+					log.Println(err)
+				} else {
+					regUsers.RWD.RLock()
+					_, ok := regUsers.Users[cmd.User.Username]
+					regUsers.RWD.RUnlock()
+					if ok {
+						mQ <- MessageToBot{
+							ChatId:    cmd.User.Id,
+							Text:      "<i>You are authenticated!</i>",
+							ParseMode: "HTML",
+						}
+
+						regUsers.RWD.Lock()
+						regUsers.Users[cmd.User.Username] = cmd.User
+						regUsers.RWD.Unlock()
+
+						if err := brds.SaveRegUsers(client, ctx, regUsers); err != nil {
+							log.Println(err)
+						}
+
+					} else {
+						mQ <- MessageToBot{
+							ChatId:    cmd.User.Id,
+							Text:      "<i>You are not registered!</i>",
+							ParseMode: "HTML",
+						}
+
+					}
+				}
+			case "/listp":
+				regUsers.RWD.RLock()
+				userBot, ok := regUsers.Users[cmd.User.Username]
+				regUsers.RWD.RUnlock()
+				if !ok || userBot.Id != cmd.User.Id {
+					mQ <- MessageToBot{
+						ChatId:    cmd.User.Id,
+						Text:      "<i>You aren't authenticated!\nUse the '/start' command.</i>",
+						ParseMode: "HTML",
+					}
+
+				} else {
+					outSring, _ := formatProblemHostZbx(prblmHosts)
+					log.Println(outSring)
+					mQ <- MessageToBot{
+						ChatId:    cmd.User.Id,
+						Text:      outSring,
+						ParseMode: "HTML",
+					}
+
+				}
+			case "/listr":
+				regUsers.RWD.RLock()
+				userBot, ok := regUsers.Users[cmd.User.Username]
+				regUsers.RWD.RUnlock()
+				if !ok || userBot.Id != cmd.User.Id {
+					mQ <- MessageToBot{
+						ChatId:    cmd.User.Id,
+						Text:      "<i>You aren't authenticated!\nUse the '/start' command.</i>",
+						ParseMode: "HTML",
+					}
+
+				} else {
+					outSring, _ := formatRestoredHostZbx(rstrdHosts)
+					mQ <- MessageToBot{
+						ChatId:    cmd.User.Id,
+						Text:      outSring,
+						ParseMode: "HTML",
+					}
+				}
+			case "/help":
 
 				mQ <- MessageToBot{
-					ChatId:    cmd.UserID,
-					Text:      cmd.TextMessage,
+					ChatId:    cmd.User.Id,
+					Text:      "<i>Use the following commands: /help | /start | /listp | /listr.</i>",
 					ParseMode: "HTML",
 				}
-			case "listp":
-				outSring, _ := formatProblemHostZbx(prblmHosts)
-				log.Println(outSring)
+			default:
 				mQ <- MessageToBot{
-					ChatId:    cmd.UserID,
-					Text:      outSring,
+					ChatId:    cmd.User.Id,
+					Text:      "<i>Unknow command.\nUse the '/help' command.</i>",
 					ParseMode: "HTML",
 				}
-			case "listr":
-				outSring, _ := formatRestoredHostZbx(rstrdHosts)
-				mQ <- MessageToBot{
-					ChatId:    cmd.UserID,
-					Text:      outSring,
-					ParseMode: "HTML",
-				}
+				// 	mQ <- MessageToBot{
+				// 		ChatId:    cmd.UserID,
+				// 		Text:      cmd.TextMessage,
+				// 		ParseMode: "HTML",
+				// 	}
+				// case "listp":
+				// 	outSring, _ := formatProblemHostZbx(prblmHosts)
+				// 	log.Println(outSring)
+				// 	mQ <- MessageToBot{
+				// 		ChatId:    cmd.UserID,
+				// 		Text:      outSring,
+				// 		ParseMode: "HTML",
+				// 	}
+				// case "listr":
+				// 	outSring, _ := formatRestoredHostZbx(rstrdHosts)
+				// 	mQ <- MessageToBot{
+				// 		ChatId:    cmd.UserID,
+				// 		Text:      outSring,
+				// 		ParseMode: "HTML",
+				// 	}
 			}
 		case cmd := <-fromZbx:
 			log.Println(cmd)
-			go sendMsgAllUsers(cmd.TextMessage, mQ, rgdUsers)
+			go sendMsgAllUsers(cmd.TextMessage, mQ, regUsers)
 		}
 	}
 }
