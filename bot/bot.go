@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -168,6 +169,57 @@ func sendMessages(bot Bot, mQ <-chan msgmngr.MessageToBot) {
 	}
 }
 
+// sliceMessage  slices the incoming text according to the limit.
+// Sends chunks in turn to the outString channel
+func sliceMessage(incomingText string, limit int) (outString chan string) {
+	outString = make(chan string)
+	go func() {
+		defer close(outString)
+		lenIncomingText := len(incomingText)
+		if lenIncomingText <= limit {
+			outString <- incomingText
+			return
+		} else {
+			var b strings.Builder
+			r := strings.NewReader(incomingText)
+			sliceIncomingText := make([]byte, limit)
+			var counterBytes int
+			var flagW bool
+			for {
+				n, err := r.Read(sliceIncomingText)
+				if n != 0 {
+
+					if flagW && err != io.EOF {
+						b.WriteString("...")
+
+					}
+					if !flagW {
+						flagW = true
+					}
+
+					b.Write(sliceIncomingText[:n])
+					counterBytes += n
+					if err == nil && counterBytes != lenIncomingText {
+						b.WriteString("...")
+					}
+					outString <- b.String()
+					b.Reset()
+				}
+
+				if err != nil {
+					break
+				}
+
+			}
+
+			return
+		}
+	}()
+	return outString
+}
+
+// poller receives incoming updates using long polling (https://core.telegram.org/bots/api#getting-updates).
+// Sends the received data via comandToMM channel.
 func poller(bot Bot, comandToMM chan<- msgmngr.CommandFromBot) {
 	var lastIDUpdate int
 
@@ -191,101 +243,9 @@ func poller(bot Bot, comandToMM chan<- msgmngr.CommandFromBot) {
 						Username:     res.Message.From.Username,
 						LanguageCode: res.Message.From.LanguageCode,
 					},
-					// TextMessage: "",
 					TextCommand: res.Message.Text,
 				}
-				// switch res.Message.Text {
-				// case "/start":
-				// 	comandToMM <- msgmngr.CommandFromBot{
-				// 		UserID:      res.Message.From.Id,
-				// 		TextMessage: "Command is 'start'",
-				// 		TextCommand: "print",
-				// 	}
-				// 	if err := brds.UpdateRegUsers(client, ctx, regUsers); err != nil {
-				// 		log.Println(err)
-				// 	} else {
-				// 		regUsers.RWD.RLock()
-				// 		_, ok := regUsers.Users[res.Message.From.Username]
-				// 		regUsers.RWD.RUnlock()
-				// 		if ok {
-				// 			comandToMM <- msgmngr.CommandFromBot{
-				// 				UserID:      res.Message.From.Id,
-				// 				TextMessage: "<i>You are authenticated!</i>",
-				// 				TextCommand: "print",
-				// 			}
 
-				// 			regUsers.RWD.Lock()
-				// 			regUsers.Users[res.Message.From.Username] = brds.User{Id: res.Message.From.Id,
-				// 				IsBot:        res.Message.From.IsBot,
-				// 				FirstName:    res.Message.From.FirstName,
-				// 				LastName:     res.Message.From.LastName,
-				// 				Username:     res.Message.From.Username,
-				// 				LanguageCode: res.Message.From.LanguageCode,
-				// 			}
-				// 			regUsers.RWD.Unlock()
-
-				// 			if err := brds.SaveRegUsers(client, ctx, regUsers); err != nil {
-				// 				log.Println(err)
-				// 			}
-
-				// 		} else {
-				// 			comandToMM <- msgmngr.CommandFromBot{
-				// 				UserID:      res.Message.From.Id,
-				// 				TextMessage: "<i>You are not registered!</i>",
-				// 				TextCommand: "print",
-				// 			}
-
-				// 		}
-				// 	}
-				// case "/listp":
-				// 	regUsers.RWD.RLock()
-				// 	userBot, ok := regUsers.Users[res.Message.From.Username]
-				// 	regUsers.RWD.RUnlock()
-				// 	if !ok || userBot.Id != res.Message.From.Id {
-				// 		comandToMM <- msgmngr.CommandFromBot{
-				// 			UserID:      res.Message.From.Id,
-				// 			TextMessage: "<i>You aren't authenticated!\nUse the '/start' command.</i>",
-				// 			TextCommand: "print",
-				// 		}
-
-				// 	} else {
-				// 		comandToMM <- msgmngr.CommandFromBot{
-				// 			UserID:      res.Message.From.Id,
-				// 			TextCommand: "listp",
-				// 		}
-				// 	}
-				// case "/listr":
-				// 	regUsers.RWD.RLock()
-				// 	userBot, ok := regUsers.Users[res.Message.From.Username]
-				// 	regUsers.RWD.RUnlock()
-				// 	if !ok || userBot.Id != res.Message.From.Id {
-				// 		comandToMM <- msgmngr.CommandFromBot{
-				// 			UserID:      res.Message.From.Id,
-				// 			TextMessage: "<i>You aren't authenticated!\nUse the '/start' command.</i>",
-				// 			TextCommand: "print",
-				// 		}
-
-				// 	} else {
-				// 		comandToMM <- msgmngr.CommandFromBot{
-				// 			UserID:      res.Message.From.Id,
-				// 			TextCommand: "listr",
-				// 		}
-				// 	}
-				// case "/help":
-				// 	comandToMM <- msgmngr.CommandFromBot{
-				// 		UserID:      res.Message.From.Id,
-				// 		TextMessage: "<i>Use the following commands: /help | /start | /listp | /lisr.</i>",
-				// 		TextCommand: "print",
-				// 	}
-
-				// default:
-				// 	comandToMM <- msgmngr.CommandFromBot{
-				// 		UserID:      res.Message.From.Id,
-				// 		TextMessage: "<i>Unknow command.\nUse the '/help' command.</i>",
-				// 		TextCommand: "print",
-				// 	}
-
-				// }
 			}
 		}
 	}

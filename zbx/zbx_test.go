@@ -1,6 +1,7 @@
 package zbx
 
 import (
+	"fmt"
 	"slices"
 	"testing"
 
@@ -173,11 +174,18 @@ func TestCompareHosts(t *testing.T) {
 		t.Fatal("len(currentHosts.Hosts) != len(wantCurretHosts)")
 	}
 
+	var counterNewHosts, counterChangedHosts int
 	for kw, vw := range wantCurrentHosts {
 		v, ok := currentHosts.Hosts[kw]
 		if !ok {
 			t.Fatalf("wantCurrentHosts[%s] is not in currentHosts.Hosts", kw)
 		} else {
+			if vw.ItNew {
+				counterNewHosts += 1
+			}
+			if vw.ItChanged {
+				counterChangedHosts += 1
+			}
 			if vw.HostIdZ != v.HostIdZ {
 				t.Errorf("wantCurrentHosts[%s].HostIdZ=%s != currentHosts.Hosts[%s].HostIdZ=%s", kw, vw.HostIdZ, kw, v.HostIdZ)
 			}
@@ -198,10 +206,12 @@ func TestCompareHosts(t *testing.T) {
 			}
 		}
 	}
-	info := "<b>The number of problematic hosts is 5.</b>\n<b>The number of fixed hosts is 3.</b>"
+	info := fmt.Sprintf("The number of problematic hosts is <b>%d (%d new, %d changed)</b>.\nThe number of restored hosts is <b>%d</b>.",
+		len(currentHosts.Hosts), counterNewHosts, counterChangedHosts, len(fixHosts.Hosts))
+
 	mess := <-commandQueueFromZbx
 	if info != mess.TextMessage {
-		t.Error("TextMessage != <b>The number of problematic hosts is 5.</b>\n<b>The number of fixed hosts is 3.</b>")
+		t.Error(info)
 
 	}
 }
