@@ -245,6 +245,7 @@ func compareHosts(lastHosts, rstrdHosts, currentHosts *brds.SavedHosts, comandTo
 		}
 	}
 
+	var counterNewHosts, counterChangedHos int
 	for kc, vc := range currentHosts.Hosts {
 		vl, ok := lastHosts.Hosts[kc]
 		if !ok {
@@ -253,6 +254,7 @@ func compareHosts(lastHosts, rstrdHosts, currentHosts *brds.SavedHosts, comandTo
 				NameZ:    vc.NameZ,
 				ProblemZ: vc.ProblemZ,
 				ItNew:    true}
+			counterNewHosts += 1
 			flagСhange = true
 		} else if slices.Compare(vc.ProblemZ, vl.ProblemZ) != 0 {
 			currentHosts.Hosts[kc] = brds.ZabbixHost{HostIdZ: vc.HostIdZ,
@@ -260,6 +262,7 @@ func compareHosts(lastHosts, rstrdHosts, currentHosts *brds.SavedHosts, comandTo
 				NameZ:     vc.NameZ,
 				ProblemZ:  vc.ProblemZ,
 				ItChanged: true}
+			counterChangedHos += 1
 			flagСhange = true
 		}
 	}
@@ -267,9 +270,9 @@ func compareHosts(lastHosts, rstrdHosts, currentHosts *brds.SavedHosts, comandTo
 	if !flagRestore && flagСhange {
 		rstrdHosts.Hosts = map[string]brds.ZabbixHost{}
 	}
-	infoForUsers := fmt.Sprintf("The number of problematic hosts is <b>%d</b>.\nThe number of restored hosts is <b>%d</b>.", len(currentHosts.Hosts), len(rstrdHosts.Hosts))
+	infoForUsers := fmt.Sprintf("The number of problematic hosts is <b>%d (%d new, %d changed)</b>.\nThe number of restored hosts is <b>%d</b>.",
+		len(currentHosts.Hosts), counterNewHosts, counterChangedHos, len(rstrdHosts.Hosts))
 	if flagСhange {
-
 		comandToMM <- msgmngr.CommandFromZbx{TextMessage: infoForUsers}
 	}
 	return nil

@@ -25,7 +25,7 @@ func main() {
 	argumentsCLI := os.Args
 
 	if len(argumentsCLI) < 2 {
-		fmt.Printf("Usage: %s run|users <arguments>", os.Args[0])
+		fmt.Printf("Usage: %s run|users <arguments>\n", os.Args[0])
 		return
 	}
 	switch argumentsCLI[1] {
@@ -81,8 +81,8 @@ func main() {
 		waitGroup.Wait()
 	case "users":
 		if len(argumentsCLI) < 3 {
-			fmt.Printf("Usage: %s users -add|-del <username1> <username2>", os.Args[0])
-			fmt.Printf("Usage: %s users -list", os.Args[0])
+			fmt.Printf("Usage: %s users -add|-del <username1> <username2>\n", os.Args[0])
+			fmt.Printf("Usage: %s users -list\n", os.Args[0])
 			return
 		}
 
@@ -103,7 +103,7 @@ func main() {
 
 		case "-add":
 			if len(argumentsCLI) < 4 {
-				fmt.Printf("Usage: %s users -add|-del <username1> <username2> ...", os.Args[0])
+				fmt.Printf("Usage: %s users -add|-del <username1> <username2> ...\n", os.Args[0])
 				return
 			}
 			// fmt.Println(argumentsCLI[2:])
@@ -113,7 +113,7 @@ func main() {
 			fmt.Println(argumentsCLI[3:], "has been registered.")
 		case "-del":
 			if len(argumentsCLI) < 4 {
-				fmt.Printf("Usage: %s users -add|-del <username1> <username2> ...", os.Args[0])
+				fmt.Printf("Usage: %s users -add|-del <username1> <username2> ...\n", os.Args[0])
 				return
 			}
 			countDelUsers, err := brds.DelUsers(client, ctx, argumentsCLI[3:])
