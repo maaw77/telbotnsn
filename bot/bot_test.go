@@ -64,4 +64,16 @@ func TestSliceMessage(t *testing.T) {
 		}
 		i += 1
 	}
+
+	// Russian
+	inpString = "А3АВ3ВС3СД3ДЕ3ЕСс"
+	wantOutSrings = []string{"А3...", "...АВ...", "...3В...", "...С3...", "...СД...", "...3Д...", "...Е3...", "...ЕС...", "...с"}
+	i = 0
+	for outString := range sliceMessage(inpString, 3) {
+		if outString != wantOutSrings[i] {
+			t.Errorf("%s != %s\n", outString, wantOutSrings[i])
+		}
+		i += 1
+		// t.Log(outString)
+	}
 }
