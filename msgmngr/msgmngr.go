@@ -166,7 +166,7 @@ func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZ
 
 				} else {
 					outSring, _ := formatProblemHostZbx(prblmHosts)
-					log.Println(outSring)
+					// log.Println(outSring)
 					mQ <- MessageToBot{
 						ChatId:    cmd.User.Id,
 						Text:      outSring,
