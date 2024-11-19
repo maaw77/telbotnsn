@@ -103,11 +103,12 @@ func TestFormatProblemHostZbx(t *testing.T) {
 	}
 
 	currentHosts.RWD.RLock()
-	parStr := fmt.Sprintf(`hosts is %d.</b>`, len(currentHosts.Hosts))
+	parStr := fmt.Sprintf(`%d \(%d new, %d changed\)</b>`, len(currentHosts.Hosts), numNewName, numChName)
 	currentHosts.RWD.RUnlock()
 
 	want := regexp.MustCompile(parStr)
 	num := len(want.FindAllString(outString, -1))
+	t.Log(num)
 	if num != 1 {
 		t.Errorf(`The string "%s" was not found`, parStr)
 	}

@@ -32,20 +32,6 @@ type MessageToBot struct {
 	ParseMode string `json:"parse_mode,omitempty"`
 }
 
-// formatHostZbx returns a list of hosts formatted as a string
-// func formatHostZbx(svdHosts *brds.SavedHosts) (outHosts string) {
-// 	svdHosts.RWD.RLock()
-// 	defer svdHosts.RWD.RUnlock()
-// 	if len(svdHosts.Hosts) < 1 {
-// 		return "There are no problematic hosts!"
-// 	}
-// 	for _, host := range svdHosts.Hosts {
-// 		outHosts += fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v\n", host.NameZ, host.ProblemZ)
-// 	}
-// 	outHosts += fmt.Sprintf("\n<b>The number of problematic hosts is %d.</b>", len(svdHosts.Hosts))
-// 	return
-// }
-
 // formatProblemHostZbx returns a list of problematic hosts formatted as a string
 func formatProblemHostZbx(prblmHost *brds.SavedHosts) (outHosts string, err error) {
 
@@ -56,17 +42,21 @@ func formatProblemHostZbx(prblmHost *brds.SavedHosts) (outHosts string, err erro
 	prblmHost.RWD.RLock()
 	defer prblmHost.RWD.RUnlock()
 
+	var counterNew, counterChanged int
+
 	for _, host := range prblmHost.Hosts {
 		marker := ""
 		if host.ItChanged {
 			marker = "ch_"
+			counterChanged += 1
 		} else if host.ItNew {
 			marker = "new_"
+			counterNew += 1
 		}
 		outHosts += fmt.Sprintf("<b>%sHost name:</b> %s, <b>problems:</b>%v\n", marker, host.NameZ, host.ProblemZ)
 	}
 
-	outHosts += fmt.Sprintf("\n<b>The number of problematic hosts is %d.</b>", len(prblmHost.Hosts))
+	outHosts += fmt.Sprintf("The number of problematic hosts is <b>%d (%d new, %d changed)</b>", len(prblmHost.Hosts), counterNew, counterChanged)
 	return
 }
 
@@ -116,13 +106,6 @@ func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZ
 		case cmd := <-fromBot:
 			switch cmd.TextCommand {
 			case "/start":
-
-				// mQ <- MessageToBot{
-				// 	ChatId:    cmd.UserID,
-				// 	Text:      "START",
-				// 	ParseMode: "HTML",
-				// }
-
 				if err := brds.UpdateRegUsers(client, ctx, regUsers); err != nil {
 					log.Println(err)
 				} else {
@@ -206,26 +189,6 @@ func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZ
 					Text:      "<i>Unknow command.\nUse the '/help' command.</i>",
 					ParseMode: "HTML",
 				}
-				// 	mQ <- MessageToBot{
-				// 		ChatId:    cmd.UserID,
-				// 		Text:      cmd.TextMessage,
-				// 		ParseMode: "HTML",
-				// 	}
-				// case "listp":
-				// 	outSring, _ := formatProblemHostZbx(prblmHosts)
-				// 	log.Println(outSring)
-				// 	mQ <- MessageToBot{
-				// 		ChatId:    cmd.UserID,
-				// 		Text:      outSring,
-				// 		ParseMode: "HTML",
-				// 	}
-				// case "listr":
-				// 	outSring, _ := formatRestoredHostZbx(rstrdHosts)
-				// 	mQ <- MessageToBot{
-				// 		ChatId:    cmd.UserID,
-				// 		Text:      outSring,
-				// 		ParseMode: "HTML",
-				// 	}
 			}
 		case cmd := <-fromZbx:
 			log.Println(cmd)
@@ -233,50 +196,3 @@ func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZ
 		}
 	}
 }
-
-// // sendMessage sends messages to registered users.
-// func sendMessage(mQ chan<- bot.MessageToBot, oZ zbx.ZabbixHost, rgdUsers *brds.RegesteredUsers) {
-// 	rgdUsers.RWD.RLock()
-// 	for _, user := range rgdUsers.Users {
-// 		if user.Id != 0 {
-// 			text := fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v", oZ.NameZ, oZ.ProblemZ)
-// 			mQ <- bot.MessageToBot{
-// 				ChatId:    user.Id,
-// 				Text:      text,
-// 				ParseMode: "HTML",
-// 			}
-// 		}
-// 	}
-// 	rgdUsers.RWD.RUnlock()
-// }
-
-// // MessageManage controls the sending of messages from Zabbix to the Telegram bot
-// func MessageManager(mQ chan<- bot.MessageToBot, fromZabbix <-chan zbx.ZabbixHost, rgdUsers *brds.RegesteredUsers, svdHosts *brds.SavedHosts) {
-// 	// usersId := []int{80901973}
-// 	for oZ := range fromZabbix {
-// 		svdHosts.RWD.RLock()
-// 		hst, ok := svdHosts.Hosts[oZ.HostidZ]
-// 		svdHosts.RWD.RUnlock()
-
-// 		if !ok && len(oZ.ProblemZ) != 0 {
-
-// 			sendMessage(mQ, oZ, rgdUsers)
-// 			svdHosts.RWD.Lock()
-// 			svdHosts.Hosts[oZ.HostidZ] = oZ
-// 			svdHosts.RWD.Unlock()
-// 		} else if ok {
-// 			if len(oZ.ProblemZ) == 0 {
-// 				oZ.ProblemZ = append(oZ.ProblemZ, "No problems at all!")
-// 			}
-// 			if slices.Compare(hst.ProblemZ, oZ.ProblemZ) != 0 {
-
-// 				sendMessage(mQ, oZ, rgdUsers)
-// 				svdHosts.RWD.Lock()
-// 				svdHosts.Hosts[oZ.HostidZ] = oZ
-// 				svdHosts.RWD.Unlock()
-// 			}
-// 		}
-// 	}
-// 	// log.Println(svdHosts.Hosts, len(svdHosts.Hosts))
-// 	// close(mQ)
-// }

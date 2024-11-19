@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/maaw77/telbotnsn/brds"
 	"github.com/maaw77/telbotnsn/msgmngr"
@@ -170,7 +171,7 @@ func sendMessages(bot Bot, mQ <-chan msgmngr.MessageToBot) {
 }
 
 // sliceMessage  slices the incoming text according to the limit.
-// Sends chunks in turn to the outString channel
+// Sends chunks in turn to the outString channel.
 func sliceMessage(incomingText string, limit int) (outString chan string) {
 	outString = make(chan string)
 	go func() {
@@ -198,6 +199,17 @@ func sliceMessage(incomingText string, limit int) (outString chan string) {
 					}
 
 					b.Write(sliceIncomingText[:n])
+					// fmt.Println("UTF=", utf8.ValidString(b.String()), b.String())
+					for !utf8.ValidString(b.String()) {
+						// fmt.Println(b.String())
+						oneByte, err := r.ReadByte()
+
+						if err == nil {
+							b.WriteByte(oneByte)
+							n += 1
+						}
+						// fmt.Println(b.String())
+					}
 					counterBytes += n
 					if err == nil && counterBytes != lenIncomingText {
 						b.WriteString("...")
