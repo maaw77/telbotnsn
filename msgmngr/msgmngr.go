@@ -56,7 +56,7 @@ func formatProblemHostZbx(prblmHost *brds.SavedHosts) (outHosts string, err erro
 		outHosts += fmt.Sprintf("<b>%sHost name:</b> %s, <b>problems:</b>%v\n", marker, host.NameZ, host.ProblemZ)
 	}
 
-	outHosts += fmt.Sprintf("The number of problematic hosts is <b>%d (%d new, %d changed)</b>", len(prblmHost.Hosts), counterNew, counterChanged)
+	outHosts += fmt.Sprintf("\nThe number of problematic hosts is <b>%d (%d new, %d changed)</b>", len(prblmHost.Hosts), counterNew, counterChanged)
 	return
 }
 
