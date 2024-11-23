@@ -26,9 +26,9 @@ func TestCompareHostsNil(t *testing.T) {
 	fixHosts = &brds.SavedHosts{}
 
 	if err := compareHosts(lastHosts, fixHosts, currentHosts, commandQueueFromZbx); err == nil {
-		t.Fatalf("compareHosts(lastHost.Hosts = Nil, currentHost.Hosts = nil) = %v, want error", err)
+		t.Fatalf("compareHosts(lastHost.Hosts = nil, currentHost.Hosts = nil) = %v, want error", err)
 	} else if err.Error() != "hosts are nil" {
-		t.Fatalf("compareHosts(lastHost.Hosts = Nil, currentHosts.Hosts = nil) = \"%v\", want error.Error()=\"hosts are nil\"", err)
+		t.Fatalf("compareHosts(lastHost.Hosts = nil, currentHosts.Hosts = nil) = \"%v\", want error.Error()=\"hosts are nil\"", err)
 	}
 }
 

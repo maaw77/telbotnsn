@@ -209,6 +209,8 @@ func sliceMessage(incomingText string, limit int) (outString chan string) {
 						if err == nil {
 							b.WriteByte(oneByte)
 							n += 1
+						} else {
+							break
 						}
 						// fmt.Println(b.String())
 					}

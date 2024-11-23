@@ -9,14 +9,18 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+var AddrDef = "localhost:6380"
+var PasswordDef = "" // no password set
+var DbDef = 0        // use default DB
+
 type ZabbixHost struct {
 	HostIdZ   string   `redis:"hostid"`
 	HostZ     string   `redis:"host"`
 	NameZ     string   `redis:"name"`
 	StatusZ   string   `redis:"status"`
 	ProblemZ  []string `redis:"problem"`
-	ItNew     bool
-	ItChanged bool
+	ItNew     bool     `redis:"new"`
+	ItChanged bool     `redis:"changed"`
 }
 
 type SavedHosts struct {
@@ -41,14 +45,28 @@ type User struct {
 }
 
 // InitClient initializes the Redis client.
-func InitClient() (*redis.Client, context.Context) {
-	ctx := context.Background()
-	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6380",
-		Password: "", // no password set
-		DB:       0,  // use default DB
+func InitClient() (client *redis.Client, ctx context.Context) {
+	ctx = context.Background()
+	client = redis.NewClient(&redis.Options{
+		Addr:     AddrDef,
+		Password: PasswordDef,
+		DB:       DbDef,
 	})
-	return client, ctx
+	return
+}
+
+// AddHost adds the host to the database.
+func AddHost(client *redis.Client, ctx context.Context, host ZabbixHost) (int64, error) {
+	if client == nil || ctx == nil || host.HostIdZ == "" || host.ProblemZ == nil {
+		return 0, errors.New("the input data is nil")
+	}
+
+	res, err := client.HSet(ctx, "host:"+host.HostIdZ, host).Result()
+	if err != nil {
+		return res, err
+	}
+
+	return res, nil
 }
 
 // RegUsers registers the users to whom messages will be sent.
@@ -67,7 +85,7 @@ func RegUsers(client *redis.Client, ctx context.Context, users []string) error {
 
 }
 
-// addUsers adds user to whom messages will be sent.
+// AddUsers adds the user to the database
 func AddUser(client *redis.Client, ctx context.Context, user User) error {
 	if err := client.HSet(ctx, "user:"+user.Username, user).Err(); err != nil {
 		return err
@@ -106,7 +124,7 @@ func DelUsers(client *redis.Client, ctx context.Context, users []string) (int32,
 			return countDelUsers, err
 		} else if res > 0 {
 			countDelUsers++
-			log.Printf("%s  has been deleted\n", user)
+			// log.Printf("%s  has been deleted\n", user)
 		}
 
 	}
@@ -122,13 +140,13 @@ func UpdateRegUsers(client *redis.Client, ctx context.Context, regUsers *Regeste
 		return err
 	}
 	if len(users) < 1 {
-		log.Println("len(users) < 1 ")
+		// log.Println("len(users) < 1 ")
 		regUsers.RWD.Lock()
 		regUsers.Users = make(map[string]User)
 		regUsers.RWD.Unlock()
 		// return nil
 	} else {
-		log.Println("len(users) > 1 ")
+		// log.Println("len(users) > 1 ")
 		regUsers.RWD.Lock()
 
 		if len(regUsers.Users) == 0 {
