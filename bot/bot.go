@@ -1,13 +1,15 @@
 package bot
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
-	"io"
+	"html"
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -178,57 +180,65 @@ func sliceMessage(incomingText string, limit int) (outString chan string) {
 	outString = make(chan string)
 	go func() {
 		defer close(outString)
+
 		lenIncomingText := len(incomingText)
-		if lenIncomingText <= limit {
+		re := regexp.MustCompile(`<.*?>`)
+
+		if limit <= 0 || lenIncomingText <= limit {
 			outString <- incomingText
 			return
 		} else {
-			var b strings.Builder
-			r := strings.NewReader(incomingText)
-			sliceIncomingText := make([]byte, limit)
-			var counterBytes int
-			var flagW bool
-			for {
-				n, err := r.Read(sliceIncomingText)
-				if n != 0 {
+			// var b strings.Builder
+			// var counter int
+			scanner := bufio.NewScanner(strings.NewReader(incomingText))
 
-					if flagW && err != io.EOF {
-						b.WriteString("...")
-
-					}
-					if !flagW {
-						flagW = true
-					}
-
-					b.Write(sliceIncomingText[:n])
-					// fmt.Println("UTF=", utf8.ValidString(b.String()), b.String())
-					for !utf8.ValidString(b.String()) {
-						// fmt.Println(b.String())
-						oneByte, err := r.ReadByte()
-
-						if err == nil {
-							b.WriteByte(oneByte)
-							n += 1
-						} else {
-							break
-						}
-						// fmt.Println(b.String())
-					}
-					counterBytes += n
-					if err == nil && counterBytes != lenIncomingText {
-						b.WriteString("...")
-					}
-					outString <- b.String()
-					b.Reset()
+			slpitFunc := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+				// if atEOF {
+				// 	log.Println("atEOF=", string(data), len(data))
+				// }
+				if len(data) <= limit && atEOF {
+					// log.Println("1data=", string(data))
+					return len(data) + 1, data, bufio.ErrFinalToken
+				} else if len(data) < limit && !atEOF {
+					return 0, nil, nil
 				}
 
-				if err != nil {
-					break
+				lmt := limit
+				for !utf8.Valid(data[:lmt]) {
+					lmt -= 1
+				}
+
+				foundIndex := re.FindAllIndex(data[:lmt], -1)
+				l := len(foundIndex)
+				switch {
+				case l == 0:
+					return lmt, data[:lmt], nil
+				case l == 1:
+					return lmt, []byte(html.EscapeString(string(data[:lmt]))), nil
+				case l%2 == 0:
+					return lmt, data[:lmt], nil
+				default:
+					lmt = foundIndex[l-1][0]
+					return lmt, data[:lmt], nil
 				}
 
 			}
+			scanner.Split(slpitFunc)
 
-			return
+			var cntr int
+			for scanner.Scan() {
+				if cntr == 0 {
+					outString <- scanner.Text() + "..."
+				} else if cntr+len(scanner.Text()) >= lenIncomingText {
+					outString <- "..." + scanner.Text()
+					break
+				} else {
+					outString <- "..." + scanner.Text() + "..."
+				}
+
+				cntr += len(scanner.Text())
+			}
+
 		}
 	}()
 	return outString
