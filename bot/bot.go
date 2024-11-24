@@ -115,7 +115,7 @@ func (b *Bot) CheckAuth() error {
 
 // SendMessage sends text message.
 func (b *Bot) SendMessage(msg *msgmngr.MessageToBot) error {
-	for textMessage := range sliceMessage(msg.Text, 4000) {
+	for textMessage := range sliceMessage(msg.Text, 2000) {
 		msg.Text = textMessage
 		bJSON, err := json.Marshal(msg)
 		if err != nil {
@@ -126,8 +126,8 @@ func (b *Bot) SendMessage(msg *msgmngr.MessageToBot) error {
 		if err != nil {
 			return err
 		}
-		// tx, _ := io.ReadAll(resp.Body)
-		// log.Println(string(tx))
+		tx, _ := io.ReadAll(resp.Body)
+		log.Println(string(tx))
 		resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
 			return errors.New(resp.Status)
