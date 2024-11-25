@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"html"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -117,7 +118,7 @@ func (b *Bot) CheckAuth() error {
 
 // SendMessage sends text message.
 func (b *Bot) SendMessage(msg *msgmngr.MessageToBot) error {
-	for textMessage := range sliceMessage(msg.Text, 2000) {
+	for textMessage := range sliceMessage(msg.Text, 1000) {
 		msg.Text = textMessage
 		bJSON, err := json.Marshal(msg)
 		if err != nil {
@@ -128,11 +129,14 @@ func (b *Bot) SendMessage(msg *msgmngr.MessageToBot) error {
 		if err != nil {
 			return err
 		}
-		tx, _ := io.ReadAll(resp.Body)
-		log.Println(string(tx))
-		resp.Body.Close()
+		// tx, _ := io.ReadAll(resp.Body)
+		// log.Println(string(tx))
+		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
-			return errors.New(resp.Status)
+			tx, _ := io.ReadAll(resp.Body)
+			// return fmt.Errorf("%s", tx)
+			log.Println(string(tx))
+			log.Println(textMessage)
 		}
 	}
 	return nil
