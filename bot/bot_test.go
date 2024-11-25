@@ -7,102 +7,78 @@ import (
 // TestSliceMessage calls bot.sliceMessage with
 // various arguments, checking the correctness of the output string.
 func TestSliceMessage(t *testing.T) {
+
 	inpString := "AABBCCDDEE"
-	wantOutSrings := []string{"AA...", "...BB...", "...CC...", "...DD...", "...EE"}
+	wantOutSrings := []string{""}
 	var i int
-	for outString := range sliceMessage(inpString, 2) {
-		if outString != wantOutSrings[i] {
-			t.Errorf("%s != %s\n", outString, wantOutSrings[i])
-		}
-		i += 1
-	}
-	// for outString := range sliceMessage(inpString, 2) {
-	// 	t.Log(outString)
-	// }
-
-	inpString = "AABBCCDDEEC"
-	wantOutSrings = []string{"AA...", "...BB...", "...CC...", "...DD...", "...EE...", "...C"}
-	i = 0
-	for outString := range sliceMessage(inpString, 2) {
+	for outString := range sliceMessage(inpString, 0) {
 		if outString != wantOutSrings[i] {
 			t.Errorf("%s != %s\n", outString, wantOutSrings[i])
 		}
 		i += 1
 	}
 
-	inpString = "A3AB3BC3CD3DE3ECc"
-	wantOutSrings = []string{"A3A...", "...B3B...", "...C3C...", "...D3D...", "...E3E...", "...Cc"}
+	inpString = "1234567Ы"
+	wantOutSrings = []string{"1234567Ы"}
 	i = 0
-	for outString := range sliceMessage(inpString, 3) {
+	for outString := range sliceMessage(inpString, 9) {
+		// t.Logf("outString= %s", outString)
 		if outString != wantOutSrings[i] {
+
 			t.Errorf("%s != %s\n", outString, wantOutSrings[i])
 		}
 		i += 1
 	}
 
-	inpString = ""
-	wantOutSrings = []string{""}
+	inpString = "123\n456\n789\n"
+	wantOutSrings = []string{"123...", "...456...", "...789"}
 	i = 0
-	for outString := range sliceMessage(inpString, 3) {
+	for outString := range sliceMessage(inpString, 5) {
+		// t.Logf("outString= %s, len(outString)=%d ", outString, len(outString))
+
 		if outString != wantOutSrings[i] {
+
 			t.Errorf("%s != %s\n", outString, wantOutSrings[i])
 		}
 		i += 1
 	}
 
-	inpString = "123"
-	wantOutSrings = []string{"123"}
+	inpString = "123Ф\n456\n789\n"
+	wantOutSrings = []string{"123Ф...", "...456...", "...789"}
 	i = 0
-	for outString := range sliceMessage(inpString, 3) {
+	for outString := range sliceMessage(inpString, 6) {
+		// t.Logf("outString= %s, len(outString)=%d ", outString, len(outString))
+
 		if outString != wantOutSrings[i] {
+
 			t.Errorf("%s != %s\n", outString, wantOutSrings[i])
 		}
 		i += 1
 	}
 
-	inpString = "1234"
-	wantOutSrings = []string{"123...", "...4"}
+	inpString = "123\n456\n789\n"
+	wantOutSrings = []string{"123...", "...456...", "...789"}
 	i = 0
-	for outString := range sliceMessage(inpString, 3) {
+	for outString := range sliceMessage(inpString, 4) {
+		// t.Logf("outString= %s, len(outString)=%d ", outString, len(outString))
+
 		if outString != wantOutSrings[i] {
+
 			t.Errorf("%s != %s\n", outString, wantOutSrings[i])
 		}
 		i += 1
 	}
 
-	// Russian
-	inpString = "А3А\nВ3ВС3СД3Сс\n"
-	wantOutSrings = []string{"А3...", "...А\n...", "...В3...", "...В...", "...С3...", "...С...", "...Д3...", "...С...", "...с\n"}
+	inpString = "123Ф\n456\n789\n"
+	wantOutSrings = []string{"123Ф\n456...", "...789"}
 	i = 0
-	for outString := range sliceMessage(inpString, 3) {
+	for outString := range sliceMessage(inpString, 11) {
+		// t.Logf("outString= %s, len(outString)=%d ", outString, len(outString))
+
 		if outString != wantOutSrings[i] {
+
 			t.Errorf("%s != %s\n", outString, wantOutSrings[i])
 		}
 		i += 1
-		// t.Log(outString)
 	}
-
-	inpString = ""
-	wantOutSrings = []string{""}
-	i = 0
-	for outString := range sliceMessage(inpString, -3) {
-		if outString != wantOutSrings[i] {
-			t.Errorf("%s != %s\n", outString, wantOutSrings[i])
-		}
-		i += 1
-		// t.Log(outString)
-	}
-
-	// HTMl tags
-	inpString = "The number of problematic hosts is <b>%d (%d new, %d changed)</b>.\nThe number of restored hosts is <b>%d</b>."
-	// wantOutSrings = []string{""}
-	i = 0
-	for outString := range sliceMessage(inpString, 40) {
-		// if outString != wantOutSrings[i] {
-		// 	t.Errorf("%s != %s\n", outString, wantOutSrings[i])
-		// }
-		// i += 1
-		t.Log(outString)
-	}
-
 }
