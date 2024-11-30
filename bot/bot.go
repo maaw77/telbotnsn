@@ -115,7 +115,7 @@ func (b *Bot) CheckAuth() error {
 
 // SendMessage sends text message.
 func (b *Bot) SendMessage(msg *msgmngr.MessageToBot) error {
-	for textMessage := range sliceMessage(msg.Text, 1000) {
+	for textMessage := range sliceMessage(msg.Text, 2000) {
 		msg.Text = textMessage
 		bJSON, err := json.Marshal(msg)
 		if err != nil {
@@ -184,7 +184,7 @@ func sliceMessage(incomingText string, limit int) (outString chan string) {
 		if limit <= 0 {
 			return
 		}
-		// log.Println("incomingText= ", incomingText)
+		log.Println("incomingText= ", incomingText)
 		lenIncText := len(incomingText)
 		// log.Println("lenIncText= ", lenIncText)
 		if lenIncText <= limit {
@@ -201,29 +201,29 @@ func sliceMessage(incomingText string, limit int) (outString chan string) {
 
 				if n != 0 {
 					lastIndexNl := strings.LastIndexByte(string(p[:n]), '\n')
-					if lastIndexNl > 0 {
-						if lastIndexNl+1 < n {
-							offset := (lastIndexNl + 1) - n
-							readerString.Seek(int64(offset), io.SeekCurrent)
-							n = lastIndexNl + 1
-						}
-						if counterBytes != 0 {
-							chunkIncString.WriteString("...")
-						}
-						counterBytes += n
+					if lastIndexNl > 0 && lastIndexNl+1 < n && readerString.Len() != 0 { //!!!!!!!!!!NOTE
 
-						chunkIncString.Write(p[:n-1])
-
-						if int64(counterBytes) < readerString.Size() {
-							chunkIncString.WriteString("...")
-						}
-						outString <- chunkIncString.String()
-						chunkIncString.Reset()
+						offset := (lastIndexNl + 1) - n
+						readerString.Seek(int64(offset), io.SeekCurrent)
+						n = lastIndexNl + 1
 
 					}
-				}
+					if counterBytes != 0 {
+						chunkIncString.WriteString("...\n")
+					}
+					counterBytes += n
+					// if int64(counterBytes) < readerString.Size() {
+					// 	chunkIncString.Write(p[:n-1])
+					// } else {
+					chunkIncString.Write(p[:n])
+					// }
+					if int64(counterBytes) < readerString.Size() {
+						chunkIncString.WriteString("...")
+					}
+					outString <- chunkIncString.String()
+					chunkIncString.Reset()
 
-				if err != nil {
+				} else if err != nil {
 					return
 				}
 			}
