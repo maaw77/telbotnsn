@@ -58,10 +58,77 @@ func InitClient() (client *redis.Client, ctx context.Context) {
 // AddHost adds the host to the database.
 func AddHost(client *redis.Client, ctx context.Context, host ZabbixHost) (int64, error) {
 	if client == nil || ctx == nil || host.HostIdZ == "" || host.ProblemZ == nil {
-		return 0, errors.New("the input data is nil")
+		return 0, errors.New("the input data is empty")
 	}
 
-	res, err := client.HSet(ctx, "host:"+host.HostIdZ, host).Result()
+	for _, v := range host.ProblemZ {
+		res, err := client.RPush(ctx, "problems:"+host.HostIdZ, v).Result()
+		if err != nil {
+			return res, err
+		}
+	}
+
+	res, err := client.HSet(ctx, "host:"+host.HostIdZ,
+		"hostid", host.HostIdZ,
+		"host", host.HostZ,
+		"name", host.NameZ,
+		"status", host.StatusZ,
+		"new", host.ItNew,
+		"changed", host.ItChanged,
+		"problems", "problems:"+host.HostIdZ).Result()
+	if err != nil {
+		return res, err
+	}
+	return res, nil
+
+}
+
+// GetHost returns ZabbixHost from the database.
+func GetHost(client *redis.Client, ctx context.Context, hostID string) (host ZabbixHost, err error) {
+	if client == nil || ctx == nil || hostID == "" {
+		return host, errors.New("the input data is empty")
+	}
+
+	res1, err := client.HGetAll(ctx, "host:"+hostID).Result()
+	switch {
+	case err != nil:
+		return host, err
+	case len(res1) == 0:
+		return host, errors.New("the data was not found")
+
+	}
+
+	// log.Println(res1)
+	host.HostIdZ = res1["hostid"]
+	host.HostZ = res1["host"]
+	host.NameZ = res1["name"]
+	host.StatusZ = res1["status"]
+	switch {
+	case res1["new"] == "1":
+		host.ItNew = true
+	case res1["changed"] == "1":
+		host.ItChanged = true
+	}
+
+	res2, err := client.LRange(ctx, res1["problems"], 0, -1).Result()
+	if err != nil {
+		return host, err
+	}
+	host.ProblemZ = res2
+
+	return host, nil
+}
+
+// DelHost removes ZabbixHost from the database.
+func DelHost(client *redis.Client, ctx context.Context, hostID string) (res int64, err error) {
+	if client == nil || ctx == nil || hostID == "" {
+		return 0, errors.New("the input data is empty")
+	}
+	if res, err := client.Del(ctx, "problems:"+hostID).Result(); err != nil {
+		return res, err
+	}
+
+	res, err = client.Del(ctx, "host:"+hostID).Result()
 	if err != nil {
 		return res, err
 	}
