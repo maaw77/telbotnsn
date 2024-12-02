@@ -278,6 +278,13 @@ func compareHosts(lastHosts, rstrdHosts, currentHosts *brds.SavedHosts, comandTo
 				ItChanged: true}
 			counterChangedHosts += 1
 			flagСhange = true
+		} else if !flagRestore {
+			currentHosts.Hosts[kc] = brds.ZabbixHost{HostIdZ: vc.HostIdZ,
+				HostZ:     vc.HostZ,
+				NameZ:     vc.NameZ,
+				ProblemZ:  vc.ProblemZ,
+				ItChanged: vl.ItChanged,
+				ItNew:     vl.ItNew}
 		}
 	}
 
