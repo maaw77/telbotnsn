@@ -190,7 +190,7 @@ func TestFormatRestoredHostZbx(t *testing.T) {
 
 	currentHosts.RWD.RLock()
 	defer currentHosts.RWD.RUnlock()
-	parStr := fmt.Sprintf(`of restored hosts is %d.</b>`, len(currentHosts.Hosts))
+	parStr := fmt.Sprintf(`of restored hosts is <b>%d</b>.`, len(currentHosts.Hosts))
 
 	want := regexp.MustCompile(parStr)
 	num := len(want.FindAllString(outString, -1))

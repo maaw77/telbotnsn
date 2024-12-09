@@ -74,7 +74,7 @@ func formatRestoredHostZbx(rstrdHost *brds.SavedHosts) (outHosts string, err err
 		outHosts += fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v\n", host.NameZ, host.ProblemZ)
 	}
 
-	outHosts += fmt.Sprintf("\n<b>The number of restored hosts is %d.</b>", len(rstrdHost.Hosts))
+	outHosts += fmt.Sprintf("\nThe number of restored hosts is <b>%d</b>.", len(rstrdHost.Hosts))
 	return
 }
 
@@ -100,6 +100,7 @@ func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZ
 	regUsers *brds.RegesteredUsers, prblmHosts, rstrdHosts *brds.SavedHosts) {
 
 	client, ctx := brds.InitClient()
+	defer client.Close()
 
 	for {
 		select {
@@ -177,7 +178,6 @@ func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZ
 					}
 				}
 			case "/help":
-
 				mQ <- MessageToBot{
 					ChatId:    cmd.User.Id,
 					Text:      "<i>Use the following commands: /help | /start | /listp | /listr.</i>",
@@ -191,6 +191,9 @@ func MessageManager(mQ chan<- MessageToBot, fromBot <-chan CommandFromBot, fromZ
 				}
 			}
 		case cmd := <-fromZbx:
+			if err := brds.UpdateZabixHosts(client, ctx, prblmHosts); err != nil {
+				log.Println(err)
+			}
 			log.Println(cmd)
 			go sendMsgAllUsers(cmd.TextMessage, mQ, regUsers)
 		}

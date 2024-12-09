@@ -4,14 +4,21 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/redis/go-redis/v9"
 )
 
-var AddrDef = "localhost:6380"
-var PasswordDef = "" // no password set
-var DbDef = 0        // use default DB
+// Options for configuring the connection to redis
+var (
+	AddrDef     = "localhost:6380"
+	PasswordDef = "" // no password set
+	DbDef       = 0  // use default DB
+)
+
+// Errors
+var ErrEmptyInputData = errors.New("the input data is empty")
 
 type ZabbixHost struct {
 	HostIdZ   string   `redis:"hostid"`
@@ -58,7 +65,7 @@ func InitClient() (client *redis.Client, ctx context.Context) {
 // AddHost adds the host to the database.
 func AddHost(client *redis.Client, ctx context.Context, host ZabbixHost) (int64, error) {
 	if client == nil || ctx == nil || host.HostIdZ == "" || host.ProblemZ == nil {
-		return 0, errors.New("the input data is empty")
+		return 0, ErrEmptyInputData
 	}
 
 	for _, v := range host.ProblemZ {
@@ -86,7 +93,7 @@ func AddHost(client *redis.Client, ctx context.Context, host ZabbixHost) (int64,
 // GetHost returns ZabbixHost from the database.
 func GetHost(client *redis.Client, ctx context.Context, hostID string) (host ZabbixHost, err error) {
 	if client == nil || ctx == nil || hostID == "" {
-		return host, errors.New("the input data is empty")
+		return host, ErrEmptyInputData
 	}
 
 	res1, err := client.HGetAll(ctx, "host:"+hostID).Result()
@@ -119,27 +126,124 @@ func GetHost(client *redis.Client, ctx context.Context, hostID string) (host Zab
 	return host, nil
 }
 
-// DelHost removes ZabbixHost from the database.
+// GetAllHosts returns all hosts from the database.
+func GetAllHosts(client *redis.Client, ctx context.Context) (hosts map[string]ZabbixHost, err error) {
+
+	if client == nil || ctx == nil {
+		return hosts, ErrEmptyInputData
+	}
+
+	hosts = make(map[string]ZabbixHost)
+	// var host ZabbixHost
+	itr := client.Scan(ctx, 0, "host:*", 0).Iterator()
+	for itr.Next(ctx) {
+		// log.Println(itr.Val())
+		after, _ := strings.CutPrefix(itr.Val(), "host:")
+		host, err := GetHost(client, ctx, after)
+		if err == nil {
+			hosts[host.HostIdZ] = host
+		}
+
+	}
+	// if err = itr.Err(); err != nil {
+	// 	return hosts, err
+	// }
+
+	return hosts, itr.Err()
+}
+
+// DelHost removes ZabbixHost (with hostID) from the database.
 func DelHost(client *redis.Client, ctx context.Context, hostID string) (res int64, err error) {
 	if client == nil || ctx == nil || hostID == "" {
-		return 0, errors.New("the input data is empty")
+		return 0, ErrEmptyInputData
 	}
+
 	if res, err := client.Del(ctx, "problems:"+hostID).Result(); err != nil {
 		return res, err
 	}
 
 	res, err = client.Del(ctx, "host:"+hostID).Result()
-	if err != nil {
-		return res, err
+	// if err != nil {
+	// 	return res, err
+	// }
+
+	return res, err
+}
+
+// AddMultHosts adds multiple hosts to the database.
+func AddMultHosts(client *redis.Client, ctx context.Context, hosts map[string]ZabbixHost) (numHosts int64, err error) {
+	if client == nil || ctx == nil || hosts == nil {
+		return 0, ErrEmptyInputData
 	}
 
-	return res, nil
+	for _, v := range hosts {
+		if res, err := AddHost(client, ctx, v); err != nil {
+			return numHosts, err
+		} else {
+			numHosts += res
+		}
+
+	}
+
+	return numHosts, nil
+}
+
+// DelAllHosts removes all ZabbixHosts from the database.
+func DelAllHosts(client *redis.Client, ctx context.Context) (numHosts int64, err error) {
+	if client == nil || ctx == nil {
+		return 0, ErrEmptyInputData
+	}
+
+	itr := client.Scan(ctx, 0, "host:*", 0).Iterator()
+	for itr.Next(ctx) {
+		// log.Println(itr.Val())
+		after, _ := strings.CutPrefix(itr.Val(), "host:")
+		if res, err := DelHost(client, ctx, after); err != nil {
+			return numHosts, err
+		} else {
+			numHosts += res
+		}
+
+	}
+	// if err = itr.Err(); err != nil {
+	// 	return hosts, err
+	// }
+
+	return numHosts, err
+}
+
+// UpdateZabixHosts saves the saved hosts (type SavedHosts) in the database if they are not empty.
+// Otherwise, loads the saved hosts (type SavedHosts) from the database.
+func UpdateZabixHosts(client *redis.Client, ctx context.Context, svdHosts *SavedHosts) error {
+	if client == nil || ctx == nil || svdHosts == nil {
+		return ErrEmptyInputData
+	}
+
+	svdHosts.RWD.Lock()
+	defer svdHosts.RWD.Unlock()
+
+	if len(svdHosts.Hosts) != 0 {
+		if _, err := DelAllHosts(client, ctx); err != nil {
+			return err
+		}
+		if _, err := AddMultHosts(client, ctx, svdHosts.Hosts); err != redis.Nil {
+			return err
+		}
+	} else {
+		hosts, err := GetAllHosts(client, ctx)
+		if err != nil {
+			return err
+		}
+		svdHosts.Hosts = hosts
+	}
+
+	return nil
 }
 
 // RegUsers registers the users to whom messages will be sent.
 func RegUsers(client *redis.Client, ctx context.Context, users []string) error {
 	if len(users) < 1 {
-		return errors.New("the list of users is empty")
+		return ErrEmptyInputData
 	}
 	for _, user := range users {
 		if err := AddUser(client, ctx, User{Username: user}); err != nil {
@@ -172,11 +276,11 @@ func ListUsers(client *redis.Client, ctx context.Context) (map[string]User, erro
 		}
 		users[usr.Username] = usr
 	}
-	if err := itr.Err(); err != nil {
-		return users, err
-	}
+	// if err := itr.Err(); err != nil {
+	// 	return users, err
+	// }
 
-	return users, nil
+	return users, itr.Err()
 }
 
 // DelUsers removes users from the mailing list.

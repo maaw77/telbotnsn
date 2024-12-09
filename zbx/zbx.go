@@ -314,7 +314,7 @@ func Run(username string, password string, comandToMM chan<- msgmngr.CommandFrom
 		}()
 
 		time.Sleep(5 * time.Minute)
-		log.Println("zbx is awake")
+		log.Println("zbx is awake!")
 
 	}
 	// close(outZabbix)
