@@ -74,7 +74,7 @@ func formatRestoredHostZbx(rstrdHost *brds.SavedHosts) (outHosts string, err err
 		outHosts += fmt.Sprintf("<b>Host name:</b> %s, <b>problems:</b>%v\n", host.NameZ, host.ProblemZ)
 	}
 
-	outHosts += fmt.Sprintf("\n<b>The number of restored hosts is %d.</b>", len(rstrdHost.Hosts))
+	outHosts += fmt.Sprintf("\nThe number of restored hosts is <b>%d.</b>", len(rstrdHost.Hosts))
 	return
 }
 
