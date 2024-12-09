@@ -51,6 +51,8 @@ func main() {
 
 		rstrdHosts := brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{}}
 
+		client.Close()
+
 		// outZabbix := make(chan zbx.ZabbixHost)
 		messageQueue := make(chan msgmngr.MessageToBot, 5)
 		commandQueueFromBot := make(chan msgmngr.CommandFromBot, 5)
