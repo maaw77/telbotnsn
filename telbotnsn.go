@@ -40,18 +40,21 @@ func main() {
 		regUsers.RWD.RUnlock()
 
 		svdHosts := brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{}}
-		svdHosts.RWD.Lock()
-		svdHosts.Hosts["Host_1"] = brds.ZabbixHost{HostIdZ: "111",
-			NameZ: "Host_1"}
-		svdHosts.Hosts["Host_2"] = brds.ZabbixHost{HostIdZ: "222",
-			NameZ: "Host_2"}
-		svdHosts.Hosts["Host_3"] = brds.ZabbixHost{HostIdZ: "333",
-			NameZ: "Host_3"}
-		svdHosts.RWD.Unlock()
+		if err := brds.UpdateZabixHosts(client, ctx, &svdHosts); err != nil {
+			log.Println(err)
+		}
+		client.Close()
+
+		// svdHosts.RWD.Lock()
+		// svdHosts.Hosts["Host_1"] = brds.ZabbixHost{HostIdZ: "111",
+		// 	NameZ: "Host_1"}
+		// svdHosts.Hosts["Host_2"] = brds.ZabbixHost{HostIdZ: "222",
+		// 	NameZ: "Host_2"}
+		// svdHosts.Hosts["Host_3"] = brds.ZabbixHost{HostIdZ: "333",
+		// 	NameZ: "Host_3"}
+		// svdHosts.RWD.Unlock()
 
 		rstrdHosts := brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{}}
-
-		client.Close()
 
 		// outZabbix := make(chan zbx.ZabbixHost)
 		messageQueue := make(chan msgmngr.MessageToBot, 5)
