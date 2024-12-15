@@ -193,9 +193,23 @@ func (c *ZabbixClient) GetTrigger(hosts []map[string]string, svdZbxHosts *brds.S
 		}
 		// fmt.Println(zr)
 		tempProblems := []string{}
+		decodProblems := map[string]string{
+			`Disk-131072: Disk space is critically low (used > {$VFS.FS.PUSED.MAX.CRIT:"Disk-131072"}%)`: "Disk space is critically low",
+			`#1: High CPU utilization (over {$CPU.UTIL.CRIT}% for 5m)`:                                   "High CPU utilization",
+			`{HOST.NAME} ребутнулся (uptime < 10m)`:                                                      "Pебутнулся",
+		}
 		for _, trgr := range zr.Result {
 			if trgr["value"] == "1" {
-				tempProblems = append(tempProblems, html.EscapeString(trgr["description"]))
+				// log.Println(trgr["description"])
+				// Disk-131072: Disk space is critically low (used > {$VFS.FS.PUSED.MAX.CRIT:"Disk-131072"}%)
+				// #1: High CPU utilization (over {$CPU.UTIL.CRIT}% for 5m
+				// {HOST.NAME} ребутнулся (uptime < 10m)
+				v, ok := decodProblems[trgr["description"]]
+				if ok {
+					tempProblems = append(tempProblems, v)
+				} else {
+					tempProblems = append(tempProblems, html.EscapeString(trgr["description"]))
+				}
 			}
 		}
 		if len(tempProblems) > 0 {
@@ -269,6 +283,10 @@ func compareHosts(lastHosts, rstrdHosts, currentHosts *brds.SavedHosts, comandTo
 
 	if !flagRestore && flagСhange {
 		rstrdHosts.Hosts = map[string]brds.ZabbixHost{}
+	}
+
+	if !flagRestore && !flagСhange {
+		currentHosts.Hosts = lastHosts.Hosts
 	}
 	infoForUsers := fmt.Sprintf("The number of problematic hosts is <b>%d (%d new, %d changed)</b>.\nThe number of restored hosts is <b>%d</b>.",
 		len(currentHosts.Hosts), counterNewHosts, counterChangedHosts, len(rstrdHosts.Hosts))

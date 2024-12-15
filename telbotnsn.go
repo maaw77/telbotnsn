@@ -44,6 +44,7 @@ func main() {
 			log.Println(err)
 		}
 		client.Close()
+
 		// svdHosts.RWD.Lock()
 		// svdHosts.Hosts["Host_1"] = brds.ZabbixHost{HostIdZ: "111",
 		// 	NameZ: "Host_1"}

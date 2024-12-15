@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+
 	"io"
 	"log"
 	"net/http"
@@ -114,7 +115,7 @@ func (b *Bot) CheckAuth() error {
 
 // SendMessage sends text message.
 func (b *Bot) SendMessage(msg *msgmngr.MessageToBot) error {
-	for textMessage := range sliceMessage(msg.Text, 4000) {
+	for textMessage := range sliceMessage(msg.Text, 2000) {
 		msg.Text = textMessage
 		bJSON, err := json.Marshal(msg)
 		if err != nil {
@@ -127,9 +128,12 @@ func (b *Bot) SendMessage(msg *msgmngr.MessageToBot) error {
 		}
 		// tx, _ := io.ReadAll(resp.Body)
 		// log.Println(string(tx))
-		resp.Body.Close()
+		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
-			return errors.New(resp.Status)
+			tx, _ := io.ReadAll(resp.Body)
+			// return fmt.Errorf("%s", tx)
+			log.Println(string(tx))
+			log.Println(textMessage)
 		}
 	}
 	return nil
@@ -180,6 +184,7 @@ func sliceMessage(incomingText string, limit int) (outString chan string) {
 		if limit <= 0 {
 			return
 		}
+
 		lenIncText := len(incomingText)
 		if lenIncText <= limit {
 			outString <- incomingText
@@ -194,12 +199,14 @@ func sliceMessage(incomingText string, limit int) (outString chan string) {
 
 				if n != 0 {
 					lastIndexNl := strings.LastIndexByte(string(p[:n]), '\n')
+
 					if lastIndexNl > 0 && lastIndexNl+1 < n && readerString.Len() != 0 {
 						offset := (lastIndexNl + 1) - n
 						readerString.Seek(int64(offset), io.SeekCurrent)
 						n = lastIndexNl + 1
 
 					}
+
 					if readerString.Len()+n < int(readerString.Size()) {
 						chunkIncString.WriteString("...\n")
 					}
