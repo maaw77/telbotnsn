@@ -306,6 +306,7 @@ func Run(username string, password string, comandToMM chan<- msgmngr.CommandFrom
 		if err := client.Authentication(); err != nil {
 			log.Println(err)
 			continue
+
 		}
 
 		hosts, err := client.GetHost(WILDCARD)
