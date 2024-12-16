@@ -304,12 +304,12 @@ func Run(username string, password string, comandToMM chan<- msgmngr.CommandFrom
 		client := ZabbixClient{Username: username, Password: password, URL: zabbixUrlAPI}
 
 		if err := client.Authentication(); err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 
 		hosts, err := client.GetHost(WILDCARD)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 
 		prblmZbxHosts.RWD.RLock()
@@ -319,12 +319,12 @@ func Run(username string, password string, comandToMM chan<- msgmngr.CommandFrom
 		lastHost.RWD.Unlock()
 
 		if err := client.GetTrigger(hosts, prblmZbxHosts); err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 
 		go func() {
 			if err := compareHosts(lastHost, rstrdHost, prblmZbxHosts, comandToMM); err != nil {
-				log.Fatal(err)
+				log.Println(err)
 			}
 		}()
 
