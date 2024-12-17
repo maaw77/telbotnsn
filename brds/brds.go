@@ -12,7 +12,7 @@ import (
 
 // Options for configuring the connection to redis
 var (
-	AddrDef     = "localhost:6380"
+	AddrDef     = "db:6379"
 	PasswordDef = "" // no password set
 	DbDef       = 0  // use default DB
 )

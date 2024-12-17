@@ -6,9 +6,9 @@ RUN apk update && apk add --no-cache git
 COPY . $GOPATH/src/telbotnsn/
 
 WORKDIR $GOPATH/src/telbotnsn
-# RUN go mod init
+
 RUN go mod tidy
-RUN go mod download
+# RUN go mod download
 RUN mkdir /app
 RUN go build -o /app/zbot .
 
@@ -17,6 +17,6 @@ FROM alpine:latest
 RUN mkdir /app
 COPY --from=builder /app/zbot /app/zbot
 COPY --from=builder go/src/telbotnsn/.env /app/
-# EXPOSE 1234
+
 WORKDIR /app 
 CMD ["/app/zbot", "run"]
