@@ -8,9 +8,9 @@
 _Пример:_
 ```
 BOT_TOKEN=
-ZABBIX_USERNAME=pim001
-ZABBIX_PASSWORD=Zw1q2a67
-ZABBIX_WILDCARDSHOSTS=*Березо*
+ZABBIX_USERNAME=
+ZABBIX_PASSWORD=Z
+ZABBIX_WILDCARDSHOSTS=**
 
 crm_username=USER_222 # учетные данные пользователя в системе ГСМ
 crm_password=******* # учетные данные пользователя в системе ГСМ
