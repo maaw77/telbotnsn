@@ -7,7 +7,7 @@
 2. ???? В папке с проектом создать файл `.env`, содержащий параметры подключения к  и 
 _Пример:_
 ```
-BOT_TOKEN=6361577211:AAG2t15TL09uVHSHubrCiALKLwdirmR-JCs
+BOT_TOKEN=
 ZABBIX_USERNAME=pim001
 ZABBIX_PASSWORD=Zw1q2a67
 ZABBIX_WILDCARDSHOSTS=*Березо*
