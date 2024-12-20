@@ -22,6 +22,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if os.Getenv("ZABBIX_WILDCARDSHOSTS") != "" {
+		zbx.WILDCARD = os.Getenv("ZABBIX_WILDCARDSHOSTS")
+	}
+
 	argumentsCLI := os.Args
 
 	if len(argumentsCLI) < 2 {
