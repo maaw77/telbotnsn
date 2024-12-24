@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"sync"
 
 	"github.com/joho/godotenv"
@@ -24,6 +25,13 @@ func main() {
 
 	if os.Getenv("ZABBIX_WILDCARDSHOSTS") != "" {
 		zbx.WILDCARD = os.Getenv("ZABBIX_WILDCARDSHOSTS")
+	}
+
+	if os.Getenv("ZABBIX_SLEEP") != "" {
+		sd, err := strconv.ParseInt(os.Getenv("ZABBIX_SLEEP"), 10, 32)
+		if err == nil {
+			zbx.SleepDuration = int(sd)
+		}
 	}
 
 	argumentsCLI := os.Args
