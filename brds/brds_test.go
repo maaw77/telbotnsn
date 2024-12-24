@@ -7,7 +7,9 @@ import (
 )
 
 func TestAddHost(t *testing.T) {
+
 	DbDef = 1 // use 1 for the test database
+	AddrDef = "localhost:6380"
 	rdb, ctx := InitClient()
 	defer rdb.Close()
 
@@ -58,6 +60,7 @@ func TestAddHost(t *testing.T) {
 
 func TestGetHost(t *testing.T) {
 	DbDef = 1 // use 1 for the test database
+	AddrDef = "localhost:6380"
 	rdb, ctx := InitClient()
 	defer rdb.Close()
 
@@ -79,6 +82,7 @@ func TestGetHost(t *testing.T) {
 
 func TestGetAllHosts(t *testing.T) {
 	DbDef = 1 // use 1 for the test database
+	AddrDef = "localhost:6380"
 	rdb, ctx := InitClient()
 	defer rdb.Close()
 
@@ -102,6 +106,7 @@ func TestGetAllHosts(t *testing.T) {
 
 func TestDelHost(t *testing.T) {
 	DbDef = 1 // use 1 for the test database
+	AddrDef = "localhost:6380"
 	rdb, ctx := InitClient()
 	defer rdb.Close()
 
@@ -121,6 +126,7 @@ func TestDelHost(t *testing.T) {
 
 func TestAddMultHosts(t *testing.T) {
 	DbDef = 1 // use 1 for the test database
+	AddrDef = "localhost:6380"
 	rdb, ctx := InitClient()
 	defer rdb.Close()
 
@@ -150,6 +156,8 @@ func TestAddMultHosts(t *testing.T) {
 
 func TestDelAllHossts(t *testing.T) {
 	DbDef = 1 // use 1 for the test database
+	AddrDef = "localhost:6380"
+
 	rdb, ctx := InitClient()
 	defer rdb.Close()
 
@@ -191,6 +199,8 @@ func TestDelAllHossts(t *testing.T) {
 
 func TestUpdateZabixHosts(t *testing.T) {
 	DbDef = 1 // use 1 for the test database
+	AddrDef = "localhost:6380"
+
 	rdb, ctx := InitClient()
 	defer rdb.Close()
 

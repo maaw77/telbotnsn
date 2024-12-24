@@ -53,7 +53,7 @@ func main() {
 
 		svdHosts := brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{}}
 		if err := brds.UpdateZabixHosts(client, ctx, &svdHosts); err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		client.Close()
 
