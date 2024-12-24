@@ -19,7 +19,10 @@ const zabbixUrlAPI = "http://zabbix.gmkzoloto.ru/zabbix/api_jsonrpc.php"
 
 // "*Микро*"
 
-var WILDCARD = "*Микро*" //"*Березо*"
+var (
+	WILDCARD      = "*Микро*" //"*Березо*"
+	SleepDuration = 5         // minutes
+)
 
 // type ZabbixHost struct {
 // 	HostidZ  string
@@ -306,6 +309,7 @@ func Run(username string, password string, comandToMM chan<- msgmngr.CommandFrom
 		if err := client.Authentication(); err != nil {
 			log.Println(err)
 			continue
+
 		}
 
 		hosts, err := client.GetHost(WILDCARD)
@@ -331,7 +335,7 @@ func Run(username string, password string, comandToMM chan<- msgmngr.CommandFrom
 			}
 		}()
 
-		time.Sleep(5 * time.Minute)
+		time.Sleep(time.Duration(SleepDuration) * time.Minute)
 		log.Println("zbx is awake!")
 
 	}
