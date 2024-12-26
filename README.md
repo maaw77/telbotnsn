@@ -4,16 +4,14 @@
 ## Установка и запуск 
 1. Установить docker и docker compose.
 Инструкция по установке доступна в официальной документации
-2. ???? В папке с проектом создать файл `.env`, содержащий параметры подключения к  и 
+2. В папке с проектом создать файл `.env`, содержащий токен вашего телеграм-бота и учетные данные пользователя в системе Zabbix.<br>
 _Пример:_
 ```
-BOT_TOKEN=????????
-ZABBIX_USERNAME=?????????
-ZABBIX_PASSWORD=Z??????
-ZABBIX_WILDCARDSHOSTS=*??????*
-
-crm_username=USER_222 # учетные данные пользователя в системе ГСМ
-crm_password=******* # учетные данные пользователя в системе ГСМ
+BOT_TOKEN= your_bot's_token
+ZABBIX_USERNAME=  your_username
+ZABBIX_PASSWORD= your_password
+ZABBIX_WILDCARDSHOSTS=*hostanme* #маска названий хостов
+ZABBIX_SLEEP = 5 # интервал (в минутах) между опросами Zabbix API
 ```
 3. В папке с проектом выполнить команду
 ```commandline
