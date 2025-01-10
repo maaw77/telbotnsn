@@ -8,6 +8,7 @@
 _Пример:_
 ```
 BOT_TOKEN= your_bot's_token
+ZABBIX_URLAPI= https://example.com/zabbix/api_jsonrpc.php # ваш веб-интерфейс Zabbix у
 ZABBIX_USERNAME=  your_username
 ZABBIX_PASSWORD= your_password
 ZABBIX_WILDCARDSHOSTS=*hostanme* #маска названий хостов
@@ -47,8 +48,8 @@ docker exec zbt /app/zbot users -del  username_from_the_telegram-bot
 ```
 /listr
 ```
-> Примечание!  
-> Обновление сведений о состоянии хостов производиться каждых пять минут.
+> Примечание!    
+Обновление сведений о состоянии хостов производиться с заданным интервалом (ZABBIX_SLEEP). По умолчанию - пять минут.  
 > Изменение состояния хостов сопровождается сообщением.  
 > Пример:  
 > The number of problematic hosts is 40 (1 new, 0 changed).  
@@ -59,6 +60,7 @@ Host name: Хост_1, problems:[Нет пинга]
 ch_Host name: Хост_22, problems:[Disk space is critically low]  
 Host name: Хост_67:[Нет пинга]  
 new_Host name:  Хост_34, problems:[Нет пинга Disk space is critically low]
+The number of problematic hosts is 4 (1 new, 1 changed).
 ```
 >Примечание!  
 >Значение префиксов:  

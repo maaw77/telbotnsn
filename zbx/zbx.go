@@ -15,22 +15,11 @@ import (
 	"github.com/maaw77/telbotnsn/msgmngr"
 )
 
-const zabbixUrlAPI = "http://zabbix.gmkzoloto.ru/zabbix/api_jsonrpc.php"
-
-// "*Микро*"
-
 var (
+	ZabbixUrlAPI  = "http://zabbix.gmkzoloto.ru/zabbix/api_jsonrpc.php"
 	WILDCARD      = "*Микро*" //"*Березо*"
 	SleepDuration = 5         // minutes
 )
-
-// type ZabbixHost struct {
-// 	HostidZ  string
-// 	HostZ    string
-// 	NameZ    string
-// 	StatusZ  string
-// 	ProblemZ []string
-// }
 
 // For information about the Zabbix API, see the link https://www.zabbix.com/documentation/current/en/manual/api.
 type ZabbixParams struct {
@@ -52,9 +41,6 @@ type ZabbixRequest struct {
 	Result  string       `json:"result,omitempty"`
 }
 
-//	type ZabbixParamsResponseHos {
-//		Output   []string `json:"output,omitempty"`
-//	}
 type ZabbixResponse struct {
 	Jsonrpc string              `json:"jsonrpc,omitempty"`
 	Result  []map[string]string `json:"result,omitempty"`
@@ -186,15 +172,14 @@ func (c *ZabbixClient) GetTrigger(hosts []map[string]string, svdZbxHosts *brds.S
 		}
 
 		defer resp.Body.Close()
-		// val, _ := io.ReadAll(resp.Body)
-		// log.Println(string(val))
+
 		dec := json.NewDecoder(resp.Body)
 		var zr ZabbixResponse
 
 		if err := dec.Decode(&zr); err != nil {
 			return err
 		}
-		// fmt.Println(zr)
+
 		tempProblems := []string{}
 		decodProblems := map[string]string{
 			`Disk-131072: Disk space is critically low (used > {$VFS.FS.PUSED.MAX.CRIT:"Disk-131072"}%)`: "Disk space is critically low",
@@ -203,10 +188,6 @@ func (c *ZabbixClient) GetTrigger(hosts []map[string]string, svdZbxHosts *brds.S
 		}
 		for _, trgr := range zr.Result {
 			if trgr["value"] == "1" {
-				// log.Println(trgr["description"])
-				// Disk-131072: Disk space is critically low (used > {$VFS.FS.PUSED.MAX.CRIT:"Disk-131072"}%)
-				// #1: High CPU utilization (over {$CPU.UTIL.CRIT}% for 5m
-				// {HOST.NAME} ребутнулся (uptime < 10m)
 				v, ok := decodProblems[trgr["description"]]
 				if ok {
 					tempProblems = append(tempProblems, v)
@@ -229,7 +210,8 @@ func (c *ZabbixClient) GetTrigger(hosts []map[string]string, svdZbxHosts *brds.S
 	return nil
 }
 
-// compareHosts
+// compareHosts  compares the previous state (lastHosts) of the hosts with the current one (currentHosts).
+// If there is a difference, it saves the information (rstrdHosts,  currentHosts) and sends a message to the channel (comandToMM).
 func compareHosts(lastHosts, rstrdHosts, currentHosts *brds.SavedHosts, comandToMM chan<- msgmngr.CommandFromZbx) error {
 	if lastHosts == nil || rstrdHosts == nil || currentHosts == nil || comandToMM == nil {
 		return errors.New("the input data is nil")
@@ -304,7 +286,7 @@ func Run(username string, password string, comandToMM chan<- msgmngr.CommandFrom
 	lastHost := &brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{}}
 
 	for {
-		client := ZabbixClient{Username: username, Password: password, URL: zabbixUrlAPI}
+		client := ZabbixClient{Username: username, Password: password, URL: ZabbixUrlAPI}
 
 		if err := client.Authentication(); err != nil {
 			log.Println(err)
@@ -339,5 +321,5 @@ func Run(username string, password string, comandToMM chan<- msgmngr.CommandFrom
 		log.Println("zbx is awake!")
 
 	}
-	// close(outZabbix)
+
 }

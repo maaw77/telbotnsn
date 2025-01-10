@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"github.com/maaw77/telbotnsn/brds"
-	// "github.com/maaw77/telbotnsn/zbx"
 )
 
 // CommandFromBot represents an instance of a command from BOT to the message manager..

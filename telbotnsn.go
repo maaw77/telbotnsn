@@ -23,6 +23,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if os.Getenv("ZABBIX_URLAPI") != "" {
+		zbx.ZabbixUrlAPI = os.Getenv("ZABBIX_URLAPI")
+	}
+
 	if os.Getenv("ZABBIX_WILDCARDSHOSTS") != "" {
 		zbx.WILDCARD = os.Getenv("ZABBIX_WILDCARDSHOSTS")
 	}
@@ -31,6 +35,8 @@ func main() {
 		sd, err := strconv.ParseInt(os.Getenv("ZABBIX_SLEEP"), 10, 32)
 		if err == nil {
 			zbx.SleepDuration = int(sd)
+		} else {
+			log.Println(err)
 		}
 	}
 
@@ -57,18 +63,8 @@ func main() {
 		}
 		client.Close()
 
-		// svdHosts.RWD.Lock()
-		// svdHosts.Hosts["Host_1"] = brds.ZabbixHost{HostIdZ: "111",
-		// 	NameZ: "Host_1"}
-		// svdHosts.Hosts["Host_2"] = brds.ZabbixHost{HostIdZ: "222",
-		// 	NameZ: "Host_2"}
-		// svdHosts.Hosts["Host_3"] = brds.ZabbixHost{HostIdZ: "333",
-		// 	NameZ: "Host_3"}
-		// svdHosts.RWD.Unlock()
-
 		rstrdHosts := brds.SavedHosts{Hosts: map[string]brds.ZabbixHost{}}
 
-		// outZabbix := make(chan zbx.ZabbixHost)
 		messageQueue := make(chan msgmngr.MessageToBot, 5)
 		commandQueueFromBot := make(chan msgmngr.CommandFromBot, 5)
 		commandQueueFromZbx := make(chan msgmngr.CommandFromZbx, 5)
@@ -123,7 +119,7 @@ func main() {
 				fmt.Printf("Usage: %s users -add|-del <username1> <username2> ...\n", os.Args[0])
 				return
 			}
-			// fmt.Println(argumentsCLI[2:])
+
 			if err := brds.RegUsers(client, ctx, argumentsCLI[3:]); err != nil {
 				log.Fatal(err)
 			}

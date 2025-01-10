@@ -105,7 +105,6 @@ func GetHost(client *redis.Client, ctx context.Context, hostID string) (host Zab
 
 	}
 
-	// log.Println(res1)
 	host.HostIdZ = res1["hostid"]
 	host.HostZ = res1["host"]
 	host.NameZ = res1["name"]
@@ -134,7 +133,6 @@ func GetAllHosts(client *redis.Client, ctx context.Context) (hosts map[string]Za
 	}
 
 	hosts = make(map[string]ZabbixHost)
-	// var host ZabbixHost
 	itr := client.Scan(ctx, 0, "host:*", 0).Iterator()
 	for itr.Next(ctx) {
 		// log.Println(itr.Val())
@@ -145,9 +143,6 @@ func GetAllHosts(client *redis.Client, ctx context.Context) (hosts map[string]Za
 		}
 
 	}
-	// if err = itr.Err(); err != nil {
-	// 	return hosts, err
-	// }
 
 	return hosts, itr.Err()
 }
@@ -163,9 +158,6 @@ func DelHost(client *redis.Client, ctx context.Context, hostID string) (res int6
 	}
 
 	res, err = client.Del(ctx, "host:"+hostID).Result()
-	// if err != nil {
-	// 	return res, err
-	// }
 
 	return res, err
 }
@@ -205,9 +197,6 @@ func DelAllHosts(client *redis.Client, ctx context.Context) (numHosts int64, err
 		}
 
 	}
-	// if err = itr.Err(); err != nil {
-	// 	return hosts, err
-	// }
 
 	return numHosts, err
 }
@@ -276,9 +265,6 @@ func ListUsers(client *redis.Client, ctx context.Context) (map[string]User, erro
 		}
 		users[usr.Username] = usr
 	}
-	// if err := itr.Err(); err != nil {
-	// 	return users, err
-	// }
 
 	return users, itr.Err()
 }
@@ -295,7 +281,7 @@ func DelUsers(client *redis.Client, ctx context.Context, users []string) (int32,
 			return countDelUsers, err
 		} else if res > 0 {
 			countDelUsers++
-			// log.Printf("%s  has been deleted\n", user)
+
 		}
 
 	}
@@ -311,13 +297,10 @@ func UpdateRegUsers(client *redis.Client, ctx context.Context, regUsers *Regeste
 		return err
 	}
 	if len(users) < 1 {
-		// log.Println("len(users) < 1 ")
 		regUsers.RWD.Lock()
 		regUsers.Users = make(map[string]User)
 		regUsers.RWD.Unlock()
-		// return nil
 	} else {
-		// log.Println("len(users) > 1 ")
 		regUsers.RWD.Lock()
 
 		if len(regUsers.Users) == 0 {
@@ -333,10 +316,6 @@ func UpdateRegUsers(client *redis.Client, ctx context.Context, regUsers *Regeste
 		}
 		regUsers.RWD.Unlock()
 	}
-
-	// if err := SaveRegUsers(client, ctx, regUsers); err != nil {
-	// 	return err
-	// }
 
 	return nil
 }

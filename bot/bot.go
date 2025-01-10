@@ -280,7 +280,6 @@ func Run(botToken string, mQ chan msgmngr.MessageToBot, comandToMM chan<- msgmng
 		defer waitGroup.Done()
 		sendMessages(bot, mQ)
 	}()
-	// ParamGetUpdates{Offset: -1, Allowed_updates: []string{"message"}}
 	waitGroup.Add(1)
 	go func() {
 		defer waitGroup.Done()
