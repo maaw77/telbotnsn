@@ -8,7 +8,7 @@
 _Пример:_
 ```
 BOT_TOKEN= your_bot's_token
-ZABBIX_URLAPI= https://example.com/zabbix/api_jsonrpc.php # ваш веб-интерфейс Zabbix у
+ZABBIX_URLAPI= https://example.com/zabbix/api_jsonrpc.php # ваш веб-интерфейс Zabbix 
 ZABBIX_USERNAME=  your_username
 ZABBIX_PASSWORD= your_password
 ZABBIX_WILDCARDSHOSTS=*hostanme* #маска названий хостов
