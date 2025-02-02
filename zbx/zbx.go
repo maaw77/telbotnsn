@@ -16,9 +16,12 @@ import (
 )
 
 var (
-	ZabbixUrlAPI  = "http://zabbix.gmkzoloto.ru/zabbix/api_jsonrpc.php"
-	WILDCARD      = "*Микро*" //"*Березо*"
-	SleepDuration = 5         // minutes
+	ZabbixUrlAPI       = "http://zabbix.gmkzoloto.ru/zabbix/api_jsonrpc.php"
+	WILDCARD           = "*Микро*"        //"*Березо*"
+	SleepDuration      = 5                // minutes
+	prohibitedMessages = map[string]bool{ // Prohibited output messages about problems
+		`Disk-131072: Disk space is critically low (used > {$VFS.FS.PUSED.MAX.CRIT:"Disk-131072"}%)`: true,
+	}
 )
 
 // For information about the Zabbix API, see the link https://www.zabbix.com/documentation/current/en/manual/api.
@@ -182,19 +185,22 @@ func (c *ZabbixClient) GetTrigger(hosts []map[string]string, svdZbxHosts *brds.S
 
 		tempProblems := []string{}
 		decodProblems := map[string]string{
-			`Disk-131072: Disk space is critically low (used > {$VFS.FS.PUSED.MAX.CRIT:"Disk-131072"}%)`: "Disk space is critically low",
-			`#1: High CPU utilization (over {$CPU.UTIL.CRIT}% for 5m)`:                                   "High CPU utilization",
-			`{HOST.NAME} ребутнулся (uptime < 10m)`:                                                      "Pебутнулся",
+			// `Disk-131072: Disk space is critically low (used > {$VFS.FS.PUSED.MAX.CRIT:"Disk-131072"}%)`: "Disk space is critically low",
+			`#1: High CPU utilization (over {$CPU.UTIL.CRIT}% for 5m)`: "High CPU utilization",
+			`{HOST.NAME} ребутнулся (uptime < 10m)`:                    "Pебутнулся",
 		}
 		for _, trgr := range zr.Result {
 			if trgr["value"] == "1" {
-				v, ok := decodProblems[trgr["description"]]
-				if ok {
-					tempProblems = append(tempProblems, v)
-				} else {
-					tempProblems = append(tempProblems, html.EscapeString(trgr["description"]))
+				if _, ok := prohibitedMessages[trgr["description"]]; !ok {
+					v, ok := decodProblems[trgr["description"]]
+					if ok {
+						tempProblems = append(tempProblems, v)
+					} else {
+						tempProblems = append(tempProblems, html.EscapeString(trgr["description"]))
+					}
 				}
 			}
+
 		}
 		if len(tempProblems) > 0 {
 			svdZbxHosts.Hosts[hst["hostid"]] = brds.ZabbixHost{
